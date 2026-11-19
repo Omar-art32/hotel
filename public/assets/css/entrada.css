@@ -1,0 +1,47 @@
+/* Fuente de Tailwind. Se compila a styles.css con `npm run css:compilar`. */
+@import "tailwindcss" source(none);
+
+@source "../../**/*.php";
+@source "../../../app";
+@source "../js";
+
+@theme {
+  --font-titulo: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-texto: "Hanken Grotesk", system-ui, sans-serif;
+
+  --color-ostion: #fafafa;
+  --color-cal: #eeeeef;
+  --color-linea: #cdcdcf;
+  --color-piedra: #939599;
+  --color-musgo: #5e6066;
+  --color-tinta: #17181b;
+  --color-naranja: #ff6119;
+  --color-naranja-hover: #ff7a3d;
+  --color-turquesa: #2bcfce;
+  --color-alerta: #c0183a;
+  --color-exito: #0f766e;
+}
+
+@layer base {
+  html { -webkit-tap-highlight-color: transparent; }
+  .font-titulo { font-weight: 650; letter-spacing: -0.03em; }
+}
+
+@layer components {
+  .campo-texto {
+    @apply block h-12 w-full rounded-xl border border-transparent bg-cal px-4 text-base text-tinta transition
+      hover:border-piedra focus:border-turquesa focus:bg-white focus:outline-none focus:ring-4 focus:ring-turquesa/30
+      aria-invalid:border-alerta aria-invalid:bg-white aria-invalid:focus:ring-alerta/15 disabled:opacity-60;
+  }
+  .etiqueta-campo { @apply mb-2 block text-sm font-medium; }
+  .error-campo { @apply mt-2 text-sm text-alerta; }
+  .boton-principal {
+    @apply flex h-12 w-full items-center justify-center gap-3 rounded-xl bg-naranja px-6 font-semibold text-tinta transition-colors
+      hover:bg-naranja-hover focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-tinta
+      disabled:cursor-wait aria-busy:bg-naranja-hover;
+  }
+  .enlace {
+    @apply rounded-sm text-tinta underline decoration-naranja decoration-2 underline-offset-4 transition-colors
+      hover:decoration-turquesa focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tinta;
+  }
+}

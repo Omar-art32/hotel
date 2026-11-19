@@ -1,0 +1,6 @@
+.env
+storage/logs/*.log
+storage/respaldos/*
+!storage/respaldos/.gitkeep
+node_modules/
+!storage/logs/.gitkeep
