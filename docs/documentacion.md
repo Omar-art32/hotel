@@ -3,9 +3,9 @@
 Sistema web de reservaciones para un hotel boutique (nombre de ejemplo: **Casa Cantera**).
 Hecho con **PHP**, **MariaDB**, **HTML5**, **JavaScript** y **Tailwind CSS v4**.
 
-> **Estado actual:** el **inicio y cierre de sesión funcionan** con la base de datos (sesión segura, CSRF,
-> límite de intentos, bitácora y permisos por rol). Las páginas internas son provisionales ("en construcción").
-> Registro, verificación 2FA y recuperación de contraseña siguen como prototipo visual: no se envían correos.
+> **Estado actual:** el **inicio y cierre de sesión** y el **registro de clientes** funcionan con la base de datos
+> (sesión segura, CSRF, límite de intentos, bitácora y permisos por rol). Las páginas internas son provisionales
+> ("en construcción"). Verificación 2FA y recuperación de contraseña siguen como prototipo visual: no se envían correos.
 
 ---
 
@@ -35,7 +35,7 @@ hotel/
 ├── app/                     ← Código del servidor, no accesible desde el navegador
 │   ├── config/config.php    Constantes y lectura de .env
 │   ├── nucleo/              Conexion, Sesion, Csrf, Autorizacion, Bitacora
-│   ├── controladores/       AuthController (listo); Usuario y Reservacion vacíos
+│   ├── controladores/       AuthController y UsuarioController (listos); Reservacion vacío
 │   ├── repositorios/        UsuarioRepositorio (listo); Reservacion vacío
 │   └── vistas/              Fragmentos HTML reutilizables
 │
@@ -45,7 +45,8 @@ hotel/
 │
 ├── storage/logs/, storage/respaldos/   Archivos generados por el sistema
 ├── docs/                    Esta documentación
-├── tests/prueba_auth.php    Prueba de la lógica de acceso (sin base de datos)
+├── tests/                   Pruebas sin base de datos: prueba_auth.php, prueba_registro.php
+│                            y dobles_prueba.php (repositorio y bitácora simulados)
 ├── .env / .env.example      Credenciales (.env no se sube a Git)
 ├── .htaccess                Envía todas las peticiones a public/
 └── package.json             Scripts para compilar Tailwind
@@ -145,6 +146,7 @@ flowchart TD
 Cada pantalla define `$avisos` (los mensajes posibles).
 - En **`login.php`** el estado lo decide `AuthController`. Por la URL solo se aceptan `sesion_cerrada` y
   `acceso_requerido`, que llegan por redirección.
+- En **`registro.php`** lo decide `UsuarioController`, que además devuelve un mensaje por campo.
 - En las demás pantallas de acceso el estado todavía se simula con `$_GET['estado']`.
 
 ### 3.4 Flujo entre pantallas de acceso
@@ -155,6 +157,7 @@ flowchart LR
     IDX -->|Reservar habitación| LOG
     LOG -->|Crear una cuenta| REG[registro.php]
     REG -->|Ya tengo cuenta| LOG
+    REG -->|cuenta creada| MIS
     LOG -->|¿Olvidaste tu contraseña?| REC[recuperar_contrasena.php]
     REC -.->|enlace por correo| RES[restablecer_contrasena.php]
     RES -->|Iniciar sesión| LOG
@@ -241,8 +244,24 @@ sequenceDiagram
 | CSRF | Login y logout exigen el token del formulario. El logout solo acepta POST. |
 | Contraseñas | `password_verify`; si el hash usa un costo antiguo se actualiza solo (`password_needs_rehash`). |
 | Permisos | Al entrar se guardan en la sesión los permisos del rol. `Autorizacion::requerirPermiso()` redirige al login sin sesión y responde 403 sin permiso. |
-| Bitácora | `inicio_sesion`, `cierre_sesion`, `acceso_cuenta_inactiva`. |
+| Bitácora | `inicio_sesion`, `cierre_sesion`, `acceso_cuenta_inactiva`, `registro_usuario`. |
 | Sin base de datos | El login muestra "El sistema no está disponible" y registra el error en el log de PHP. |
+
+### Registro
+
+`registro.php` → `UsuarioController::registrar($_POST)`:
+
+1. Valida en el servidor: nombre (máx. 60), apellidos (máx. 80), correo válido (máx. 254), teléfono opcional
+   (7 a 20: números, espacios y `+ ( ) -`), contraseña de 8 a 72 caracteres, confirmación igual y términos aceptados.
+2. Si el correo ya existe, responde "Ya existe una cuenta con este correo". Sin verificación por correo no es
+   posible ocultarlo e iniciar la sesión del nuevo usuario a la vez.
+3. Crea el usuario con rol **cliente**, activo y habilitado (`esta_verificado = TRUE`, no hay correo de confirmación),
+   con la contraseña cifrada por `password_hash`.
+4. Registra `registro_usuario` en la bitácora, inicia la sesión y lleva a `mis_reservaciones.php`.
+
+Si hay errores, la página vuelve a mostrar los datos escritos (nunca las contraseñas) y el mensaje junto a cada campo.
+Los repositorios abren la conexión en la primera consulta, así que los errores del formulario se muestran aunque
+la base de datos no responda.
 
 Destino por rol: cliente → `mis_reservaciones.php`; recepcionista → `recepcion/panel.php`;
 administrador → `admin/habitaciones.php`; superadministrador → `admin/usuarios.php`.
@@ -363,13 +382,14 @@ Abrir `http://localhost:8000`.
 
 El CSS compilado está en el repositorio, así que el servidor no necesita Node.js.
 
-### Prueba automática
+### Pruebas automáticas
 
 ```bash
-php tests/prueba_auth.php
+php tests/prueba_auth.php       # login, límite de intentos, sesión, CSRF
+php tests/prueba_registro.php   # validaciones, correo duplicado, alta y sesión
 ```
 
-Comprueba la lógica de acceso (mensajes, límite de intentos, sesión, CSRF) con una base de datos simulada.
+Usan una base de datos simulada (`tests/dobles_prueba.php`).
 Las consultas SQL reales se prueban iniciando sesión en XAMPP con los usuarios de prueba.
 
 ### Ver los estados del prototipo
@@ -377,7 +397,6 @@ Las consultas SQL reales se prueban iniciando sesión en XAMPP con los usuarios 
 | Página | Estados (`?estado=`) |
 |---|---|
 | `verificacion_2fa.php` | `codigo_incorrecto`, `exito` |
-| `registro.php` | `conexion`, `exito` |
 | `recuperar_contrasena.php` | `conexion`, `exito` |
 | `restablecer_contrasena.php` | `token_invalido`, `conexion`, `exito` |
 
@@ -402,7 +421,6 @@ Las consultas SQL reales se prueban iniciando sesión en XAMPP con los usuarios 
 
 **Lógica del servidor**
 - Verificación en dos pasos para los roles con `requiere_2fa` (hoy el personal entra solo con contraseña).
-- `UsuarioController`: registro con `password_hash`.
 - Recuperación de contraseña y verificación de correo (requieren envío de correos; fuera de alcance por ahora).
 - "Mantener la sesión iniciada" con `tokens_usuario` (se quitó del login hasta implementarlo).
 - `ReservacionController` y `ReservacionRepositorio`: disponibilidad, reservar y cancelar.

@@ -2,87 +2,9 @@
 /**
  * Prueba de AuthController, Sesion y Csrf sin base de datos (repositorio y bitácora simulados).
  * Ejecutar: php tests/prueba_auth.php
- * Las consultas SQL reales de UsuarioRepositorio no se prueban aquí: requieren MariaDB.
  */
 
-ob_start(); // Como en una página real: nada se envía antes de manejar la sesión.
-$raiz = dirname(__DIR__) . '/app';
-foreach (['nucleo/Conexion', 'nucleo/Sesion', 'nucleo/Csrf', 'nucleo/Bitacora', 'repositorios/UsuarioRepositorio', 'controladores/AuthController'] as $archivo) {
-    require "$raiz/$archivo.php";
-}
-
-class RepositorioFalso extends UsuarioRepositorio
-{
-    public array $intentos = [];
-    public array $hashesActualizados = [];
-
-    public function __construct(private array $usuarios)
-    {
-    }
-
-    public function buscarPorCorreo(string $correo): ?array
-    {
-        return $this->usuarios[$correo] ?? null;
-    }
-
-    public function permisosDeRol(int $idRol): array
-    {
-        return $idRol === 2 ? ['consultar_reservaciones'] : ['gestionar_usuarios'];
-    }
-
-    public function actualizarContrasenaHash(int $idUsuario, string $hash): void
-    {
-        $this->hashesActualizados[$idUsuario] = $hash;
-    }
-
-    public function contarFallidosPorCorreo(string $correo, int $minutos): int
-    {
-        $fallidos = 0;
-        foreach ($this->intentos as [$correoIntento, , $exitoso]) {
-            if ($correoIntento === $correo) {
-                $fallidos = $exitoso ? 0 : $fallidos + 1;
-            }
-        }
-        return $fallidos;
-    }
-
-    public function contarFallidosPorIp(string $ip, int $minutos): int
-    {
-        return count(array_filter($this->intentos, fn ($intento) => $intento[1] === $ip && !$intento[2]));
-    }
-
-    public function registrarIntento(string $correo, string $ip, bool $fueExitoso): void
-    {
-        $this->intentos[] = [$correo, $ip, $fueExitoso];
-    }
-}
-
-class BitacoraFalsa extends Bitacora
-{
-    public array $eventos = [];
-
-    public function registrar(string $evento, ?int $idUsuario = null, ?string $detalle = null): void
-    {
-        $this->eventos[] = $evento;
-    }
-}
-
-function usuarioPrueba(int $id, int $idRol, string $rol, string $correo, bool $activo = true, bool $verificado = true): array
-{
-    return [
-        'id_usuario' => $id, 'id_rol' => $idRol, 'rol' => $rol, 'nombre' => 'Prueba', 'apellidos' => 'Uno',
-        'correo' => $correo, 'contrasena_hash' => password_hash('Correcta#1', PASSWORD_BCRYPT, ['cost' => 4]),
-        'esta_activo' => (int) $activo, 'esta_verificado' => (int) $verificado,
-    ];
-}
-
-$fallas = 0;
-function comprobar(string $descripcion, bool $condicion): void
-{
-    global $fallas;
-    echo ($condicion ? '  ok   ' : '  FALLA ') . $descripcion . PHP_EOL;
-    $fallas += $condicion ? 0 : 1;
-}
+require __DIR__ . '/dobles_prueba.php';
 
 function nuevoEscenario(): array
 {
@@ -97,8 +19,7 @@ function nuevoEscenario(): array
     return [new AuthController($repositorio, $bitacora), $repositorio, $bitacora];
 }
 
-ini_set('session.save_path', sys_get_temp_dir());
-Sesion::iniciar();
+prepararSesionDePrueba();
 
 echo "Inicio de sesión correcto\n";
 [$auth, $repo, $bitacora] = nuevoEscenario();
@@ -162,5 +83,4 @@ comprobar('rechaza un token distinto', !Csrf::validar(str_repeat('a', 64)));
 comprobar('rechaza la ausencia de token', !Csrf::validar(null));
 comprobar('el campo oculto contiene el token', str_contains(Csrf::campo(), $token));
 
-echo $fallas === 0 ? "\nTodas las comprobaciones pasaron.\n" : "\n$fallas comprobaciones fallaron.\n";
-exit($fallas === 0 ? 0 : 1);
+terminarPruebas();

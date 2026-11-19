@@ -14,7 +14,8 @@ gestiona el hotel.
 | Base de datos: tablas, roles, permisos y validaciones | ✅ `database/esquema.sql` |
 | Conexión a la base de datos | ✅ `app/nucleo/Conexion.php` |
 | Inicio y cierre de sesión: permisos por rol, límite de intentos, bitácora | ✅ Funcional |
-| Registro, 2FA y recuperación de contraseña | 🎨 Solo prototipo visual (sin envío de correos) |
+| Registro de clientes (sin correo de confirmación) | ✅ Funcional |
+| Verificación en dos pasos y recuperación de contraseña | 🎨 Solo prototipo visual |
 | Reservaciones y paneles de recepción y administración | ⏳ Pendiente (páginas provisionales) |
 
 ## Roles
@@ -74,7 +75,12 @@ php -S localhost:8000 -t public  # en otra terminal
 
 Abre `http://localhost:8000`. Sin MariaDB, el login muestra "El sistema no está disponible".
 
-Prueba de la lógica de acceso: `php tests/prueba_auth.php`
+Pruebas de la lógica de acceso y registro (no necesitan base de datos):
+
+```bash
+php tests/prueba_auth.php
+php tests/prueba_registro.php
+```
 
 ## Estructura
 

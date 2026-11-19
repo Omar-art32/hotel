@@ -66,6 +66,15 @@ class AuthController
         }
 
         $this->usuarios->registrarIntento($correo, $ip, true);
+        $this->abrirSesion($usuario);
+
+        return 'exito';
+    }
+
+    /** Guarda en la sesión al usuario (fila de buscarPorCorreo) con sus permisos y su destino. */
+    public function abrirSesion(array $usuario): void
+    {
+        $idUsuario = (int) $usuario['id_usuario'];
         Sesion::iniciarUsuario([
             'id_usuario' => $idUsuario,
             'nombre' => $usuario['nombre'],
@@ -76,8 +85,6 @@ class AuthController
             'destino' => self::DESTINOS[$usuario['rol']] ?? 'index.php',
         ]);
         $this->bitacora->registrar('inicio_sesion', $idUsuario);
-
-        return 'exito';
     }
 
     public function cerrarSesion(): void

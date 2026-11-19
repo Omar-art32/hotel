@@ -6,16 +6,19 @@
  */
 class UsuarioRepositorio
 {
-    private PDO $pdo;
-
-    public function __construct(?PDO $pdo = null)
+    public function __construct(private ?PDO $conexion = null)
     {
-        $this->pdo = $pdo ?? Conexion::obtener();
+    }
+
+    // La conexión se abre en la primera consulta: validar un formulario no necesita base de datos.
+    private function pdo(): PDO
+    {
+        return $this->conexion ??= Conexion::obtener();
     }
 
     public function buscarPorCorreo(string $correo): ?array
     {
-        $consulta = $this->pdo->prepare(
+        $consulta = $this->pdo()->prepare(
             'SELECT u.id_usuario, u.id_rol, u.nombre, u.apellidos, u.correo, u.contrasena_hash,
                     u.esta_activo, u.esta_verificado, r.nombre AS rol
              FROM usuarios u
@@ -30,7 +33,7 @@ class UsuarioRepositorio
     /** @return string[] Códigos de permiso del rol. */
     public function permisosDeRol(int $idRol): array
     {
-        $consulta = $this->pdo->prepare(
+        $consulta = $this->pdo()->prepare(
             'SELECT p.codigo
              FROM roles_permisos rp
              INNER JOIN permisos p ON p.id_permiso = rp.id_permiso
@@ -40,16 +43,32 @@ class UsuarioRepositorio
         return $consulta->fetchAll(PDO::FETCH_COLUMN);
     }
 
+    /** Crea una cuenta con rol cliente, activa y habilitada. Devuelve su id. */
+    public function crearCliente(string $nombre, string $apellidos, string $correo, ?string $telefono, string $contrasenaHash): int
+    {
+        $consulta = $this->pdo()->prepare(
+            'INSERT INTO usuarios (id_rol, nombre, apellidos, correo, telefono, contrasena_hash, esta_activo, esta_verificado)
+             SELECT id_rol, ?, ?, ?, ?, ?, TRUE, TRUE
+             FROM roles
+             WHERE nombre = \'cliente\''
+        );
+        $consulta->execute([$nombre, $apellidos, $correo, $telefono, $contrasenaHash]);
+        if ($consulta->rowCount() !== 1) {
+            throw new RuntimeException('No existe el rol cliente: importa database/esquema.sql.');
+        }
+        return (int) $this->pdo()->lastInsertId();
+    }
+
     public function actualizarContrasenaHash(int $idUsuario, string $hash): void
     {
-        $consulta = $this->pdo->prepare('UPDATE usuarios SET contrasena_hash = ? WHERE id_usuario = ?');
+        $consulta = $this->pdo()->prepare('UPDATE usuarios SET contrasena_hash = ? WHERE id_usuario = ?');
         $consulta->execute([$hash, $idUsuario]);
     }
 
     /** Fallos del correo en la ventana de tiempo, contados desde su último acceso correcto. */
     public function contarFallidosPorCorreo(string $correo, int $minutos): int
     {
-        $consulta = $this->pdo->prepare(sprintf(
+        $consulta = $this->pdo()->prepare(sprintf(
             'SELECT COUNT(*)
              FROM intentos_login
              WHERE correo = ?
@@ -67,7 +86,7 @@ class UsuarioRepositorio
 
     public function contarFallidosPorIp(string $ip, int $minutos): int
     {
-        $consulta = $this->pdo->prepare(sprintf(
+        $consulta = $this->pdo()->prepare(sprintf(
             'SELECT COUNT(*)
              FROM intentos_login
              WHERE ip = ?
@@ -81,7 +100,7 @@ class UsuarioRepositorio
 
     public function registrarIntento(string $correo, string $ip, bool $fueExitoso): void
     {
-        $consulta = $this->pdo->prepare('INSERT INTO intentos_login (correo, ip, fue_exitoso) VALUES (?, ?, ?)');
+        $consulta = $this->pdo()->prepare('INSERT INTO intentos_login (correo, ip, fue_exitoso) VALUES (?, ?, ?)');
         $consulta->execute([substr($correo, 0, 254), $ip, (int) $fueExitoso]);
     }
 }
