@@ -48,7 +48,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $estado = 'conexion';
         }
         if ($estado === 'exito') {
-            header('Location: ' . Sesion::usuarioActual()['destino']);
+            // El correo viaja en la sesión, no en la URL: no queda en el historial ni en los registros del servidor.
+            $_SESSION['correo_registrado'] = strtolower($valores['correo']);
+            header('Location: login.php?estado=cuenta_creada');
             exit;
         }
     }

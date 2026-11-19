@@ -33,9 +33,9 @@ comprobar('guarda el correo en minúsculas y sin espacios', $creado !== null);
 comprobar('guarda el nombre sin espacios sobrantes', ($creado['nombre'] ?? '') === 'Ana');
 comprobar('guarda la contraseña cifrada, no en texto', password_verify('frase segura', $creado['contrasena_hash'] ?? '') && ($creado['contrasena_hash'] ?? '') !== 'frase segura');
 comprobar('teléfono vacío se guarda como NULL', array_key_exists('telefono', $creado) && $creado['telefono'] === null);
-comprobar('inicia la sesión como cliente', (Sesion::usuarioActual()['rol'] ?? '') === 'cliente');
-comprobar('lleva a mis_reservaciones.php', (Sesion::usuarioActual()['destino'] ?? '') === 'mis_reservaciones.php');
-comprobar('registra registro_usuario e inicio_sesion', $bitacora->eventos === ['registro_usuario', 'inicio_sesion']);
+comprobar('se crea con rol cliente, activa y habilitada', ($creado['rol'] ?? '') === 'cliente' && $creado['esta_activo'] && $creado['esta_verificado']);
+comprobar('no inicia sesión: la persona entra después por el login', Sesion::usuarioActual() === null);
+comprobar('registra registro_usuario en la bitácora', $bitacora->eventos === ['registro_usuario']);
 
 echo "Validación en el servidor\n";
 $casos = [

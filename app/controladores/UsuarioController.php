@@ -2,19 +2,17 @@
 
 /**
  * Registro de cuentas de cliente.
- * Sin envío de correos: la cuenta queda habilitada al crearse y la sesión se inicia en el acto.
+ * Sin envío de correos: la cuenta queda habilitada al crearse. Después, la persona inicia sesión en login.php.
  */
 class UsuarioController
 {
     private UsuarioRepositorio $usuarios;
     private Bitacora $bitacora;
-    private AuthController $auth;
 
-    public function __construct(?UsuarioRepositorio $usuarios = null, ?Bitacora $bitacora = null, ?AuthController $auth = null)
+    public function __construct(?UsuarioRepositorio $usuarios = null, ?Bitacora $bitacora = null)
     {
         $this->usuarios = $usuarios ?? new UsuarioRepositorio();
         $this->bitacora = $bitacora ?? new Bitacora();
-        $this->auth = $auth ?? new AuthController($this->usuarios, $this->bitacora);
     }
 
     /**
@@ -90,7 +88,6 @@ class UsuarioController
         }
 
         $this->bitacora->registrar('registro_usuario', $idUsuario);
-        $this->auth->abrirSesion($this->usuarios->buscarPorCorreo($correo));
 
         return ['estado' => 'exito', 'errores' => []];
     }

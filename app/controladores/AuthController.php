@@ -72,7 +72,7 @@ class AuthController
     }
 
     /** Guarda en la sesión al usuario (fila de buscarPorCorreo) con sus permisos y su destino. */
-    public function abrirSesion(array $usuario): void
+    private function abrirSesion(array $usuario): void
     {
         $idUsuario = (int) $usuario['id_usuario'];
         Sesion::iniciarUsuario([

@@ -45,6 +45,11 @@ $avisos = [
         'titulo' => 'El sistema no está disponible en este momento.',
         'texto' => 'Inténtalo de nuevo en unos minutos.',
     ],
+    'cuenta_creada' => [
+        'tono' => 'exito',
+        'titulo' => 'Tu cuenta está lista.',
+        'texto' => 'Inicia sesión con tu correo y tu contraseña.',
+    ],
     'sesion_cerrada' => [
         'tono' => 'exito',
         'titulo' => 'Cerraste sesión.',
@@ -75,9 +80,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
     }
-} elseif (in_array($_GET['estado'] ?? '', ['sesion_cerrada', 'acceso_requerido'], true)) {
+} elseif (in_array($_GET['estado'] ?? '', ['cuenta_creada', 'sesion_cerrada', 'acceso_requerido'], true)) {
     // Solo los mensajes que llegan por redirección; los errores de acceso nunca vienen por la URL.
     $estado = $_GET['estado'];
+    if ($estado === 'cuenta_creada') {
+        $correo = $_SESSION['correo_registrado'] ?? '';
+        unset($_SESSION['correo_registrado']);
+    }
 }
 $aviso = $avisos[$estado] ?? null;
 

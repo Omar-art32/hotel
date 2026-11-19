@@ -144,8 +144,8 @@ flowchart TD
 | `acceso_fin.php` | Enlaces legales y cierre del marco. | — |
 
 Cada pantalla define `$avisos` (los mensajes posibles).
-- En **`login.php`** el estado lo decide `AuthController`. Por la URL solo se aceptan `sesion_cerrada` y
-  `acceso_requerido`, que llegan por redirección.
+- En **`login.php`** el estado lo decide `AuthController`. Por la URL solo se aceptan `cuenta_creada`,
+  `sesion_cerrada` y `acceso_requerido`, que llegan por redirección.
 - En **`registro.php`** lo decide `UsuarioController`, que además devuelve un mensaje por campo.
 - En las demás pantallas de acceso el estado todavía se simula con `$_GET['estado']`.
 
@@ -157,7 +157,7 @@ flowchart LR
     IDX -->|Reservar habitación| LOG
     LOG -->|Crear una cuenta| REG[registro.php]
     REG -->|Ya tengo cuenta| LOG
-    REG -->|cuenta creada| MIS
+    REG -->|cuenta creada| LOG
     LOG -->|¿Olvidaste tu contraseña?| REC[recuperar_contrasena.php]
     REC -.->|enlace por correo| RES[restablecer_contrasena.php]
     RES -->|Iniciar sesión| LOG
@@ -257,7 +257,9 @@ sequenceDiagram
    posible ocultarlo e iniciar la sesión del nuevo usuario a la vez.
 3. Crea el usuario con rol **cliente**, activo y habilitado (`esta_verificado = TRUE`, no hay correo de confirmación),
    con la contraseña cifrada por `password_hash`.
-4. Registra `registro_usuario` en la bitácora, inicia la sesión y lleva a `mis_reservaciones.php`.
+4. Registra `registro_usuario` en la bitácora y lleva a `login.php?estado=cuenta_creada`, que muestra
+   "Tu cuenta está lista" con el correo ya escrito. El correo pasa por la sesión (`$_SESSION['correo_registrado']`,
+   se borra al mostrarlo), no por la URL.
 
 Si hay errores, la página vuelve a mostrar los datos escritos (nunca las contraseñas) y el mensaje junto a cada campo.
 Los repositorios abren la conexión en la primera consulta, así que los errores del formulario se muestran aunque
@@ -386,7 +388,7 @@ El CSS compilado está en el repositorio, así que el servidor no necesita Node.
 
 ```bash
 php tests/prueba_auth.php       # login, límite de intentos, sesión, CSRF
-php tests/prueba_registro.php   # validaciones, correo duplicado, alta y sesión
+php tests/prueba_registro.php   # validaciones, correo duplicado y alta
 ```
 
 Usan una base de datos simulada (`tests/dobles_prueba.php`).
