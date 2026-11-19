@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/../app/config/config.php';
+Sesion::iniciar(); // La cabecera muestra "Mi cuenta" si hay sesión.
 
 // Contenido de ejemplo. Las habitaciones vendrán de MariaDB; las fotos se colocan en public/assets/img/.
 $habitaciones = [

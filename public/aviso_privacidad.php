@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/../app/config/config.php';
+Sesion::iniciar(); // La cabecera muestra "Mi cuenta" si hay sesión.
 
 // Plantilla de ejemplo: los textos entre <mark> son datos que el hotel debe completar.
 // Antes de publicar, este aviso debe revisarlo una persona especialista en protección de datos.

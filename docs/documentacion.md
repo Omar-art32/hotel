@@ -3,9 +3,9 @@
 Sistema web de reservaciones para un hotel boutique (nombre de ejemplo: **Casa Cantera**).
 Hecho con **PHP**, **MariaDB**, **HTML5**, **JavaScript** y **Tailwind CSS v4**.
 
-> **Estado actual:** la interfaz está completa como prototipo visual. La base de datos está diseñada y existe la
-> clase de conexión, pero **todavía no hay lógica de negocio**: controladores, repositorios, sesión, CSRF,
-> autorización y bitácora son archivos vacíos. Las pantallas simulan sus estados con `?estado=...`.
+> **Estado actual:** el **inicio y cierre de sesión funcionan** con la base de datos (sesión segura, CSRF,
+> límite de intentos, bitácora y permisos por rol). Las páginas internas son provisionales ("en construcción").
+> Registro, verificación 2FA y recuperación de contraseña siguen como prototipo visual: no se envían correos.
 
 ---
 
@@ -22,10 +22,10 @@ hotel/
 │   ├── restablecer_contrasena.php Crear contraseña nueva desde el enlace
 │   ├── aviso_privacidad.php Aviso de privacidad
 │   ├── terminos.php         Términos y condiciones
-│   ├── logout.php           (vacío) Cerrar sesión
-│   ├── mis_reservaciones.php (vacío) Reservaciones del cliente
-│   ├── recepcion/           (vacíos) panel, check_in, check_out
-│   ├── admin/               (vacíos) habitaciones, usuarios, bitacora
+│   ├── logout.php           Cerrar sesión (POST con token)
+│   ├── mis_reservaciones.php Destino del cliente (provisional, protegida)
+│   ├── recepcion/           panel.php (provisional, protegida); check_in y check_out vacíos
+│   ├── admin/               habitaciones.php y usuarios.php (provisionales, protegidas); bitacora vacío
 │   └── assets/
 │       ├── css/entrada.css  Fuente de Tailwind (se edita)
 │       ├── css/styles.css   CSS compilado (no se edita a mano)
@@ -34,17 +34,18 @@ hotel/
 │
 ├── app/                     ← Código del servidor, no accesible desde el navegador
 │   ├── config/config.php    Constantes y lectura de .env
-│   ├── nucleo/              Servicios base (Conexion listo; el resto vacío)
-│   ├── controladores/       (vacíos) Reciben formularios y deciden qué hacer
-│   ├── repositorios/        (vacíos) Consultas SQL
+│   ├── nucleo/              Conexion, Sesion, Csrf, Autorizacion, Bitacora
+│   ├── controladores/       AuthController (listo); Usuario y Reservacion vacíos
+│   ├── repositorios/        UsuarioRepositorio (listo); Reservacion vacío
 │   └── vistas/              Fragmentos HTML reutilizables
 │
 ├── database/
 │   ├── esquema.sql          Tablas, roles, permisos, procedimiento y triggers
-│   └── datos_prueba.sql     (vacío) Datos de ejemplo
+│   └── datos_prueba.sql     Usuarios de prueba (uno por rol)
 │
 ├── storage/logs/, storage/respaldos/   Archivos generados por el sistema
 ├── docs/                    Esta documentación
+├── tests/prueba_auth.php    Prueba de la lógica de acceso (sin base de datos)
 ├── .env / .env.example      Credenciales (.env no se sube a Git)
 ├── .htaccess                Envía todas las peticiones a public/
 └── package.json             Scripts para compilar Tailwind
@@ -88,8 +89,8 @@ config.php  →  encabezado.php  →  [contenido de la página]  →  pie.php
 
 | Archivo | Qué hace |
 |---|---|
-| `app/config/config.php` | Define `NOMBRE_HOTEL` y lee `.env` → `DB_HOST`, `DB_PUERTO`, `DB_NOMBRE`, `DB_USUARIO`, `DB_CONTRASENA`. Si falta `.env`, detiene la página con un mensaje claro. |
-| `app/vistas/encabezado.php` | `<!doctype>`, `<head>` (título con `$tituloPagina`, fuentes, `styles.css`), apertura de `<body>` y enlace "Saltar al contenido". |
+| `app/config/config.php` | Define `NOMBRE_HOTEL`, lee `.env` → `DB_HOST`, `DB_PUERTO`, `DB_NOMBRE`, `DB_USUARIO`, `DB_CONTRASENA` y registra la carga automática de clases de `nucleo/`, `controladores/` y `repositorios/`. Si falta `.env`, detiene la página con un mensaje claro. |
+| `app/vistas/encabezado.php` | `<!doctype>`, `<head>` (título con `$tituloPagina`, fuentes, `styles.css`), apertura de `<body>` y enlace "Saltar al contenido". Las páginas en subcarpetas definen `$rutaBase = '../'` antes de incluirlo. |
 | `app/vistas/pie.php` | Carga `validation.js` y cierra `</body></html>`. |
 
 ### 3.2 Páginas del sitio público
@@ -141,8 +142,10 @@ flowchart TD
 | `aviso.php` | Muestra el mensaje de estado (error o éxito). | `$aviso = ['tono', 'titulo', 'texto']` o `null` |
 | `acceso_fin.php` | Enlaces legales y cierre del marco. | — |
 
-Cada pantalla define `$avisos` (los mensajes posibles) y elige uno con `$_GET['estado']`.
-**Esto es solo del prototipo**: cuando existan los controladores, ellos decidirán el estado.
+Cada pantalla define `$avisos` (los mensajes posibles).
+- En **`login.php`** el estado lo decide `AuthController`. Por la URL solo se aceptan `sesion_cerrada` y
+  `acceso_requerido`, que llegan por redirección.
+- En las demás pantallas de acceso el estado todavía se simula con `$_GET['estado']`.
 
 ### 3.4 Flujo entre pantallas de acceso
 
@@ -155,12 +158,14 @@ flowchart LR
     LOG -->|¿Olvidaste tu contraseña?| REC[recuperar_contrasena.php]
     REC -.->|enlace por correo| RES[restablecer_contrasena.php]
     RES -->|Iniciar sesión| LOG
-    LOG -.->|recepción / administración| V2[verificacion_2fa.php]
-    LOG -.->|cliente| MIS[mis_reservaciones.php]
-    V2 -.-> PAN[recepcion/panel.php<br>admin/...]
+    LOG -->|cliente| MIS[mis_reservaciones.php]
+    LOG -->|recepcionista| PAN[recepcion/panel.php]
+    LOG -->|administrador| AH[admin/habitaciones.php]
+    LOG -->|superadministrador| AU[admin/usuarios.php]
+    MIS & PAN & AH & AU -->|Cerrar sesión| OUT[logout.php] --> LOG
 ```
 
-Las líneas punteadas aún no funcionan: dependen de la lógica del servidor.
+Las líneas punteadas aún no funcionan: dependen del envío de correos, que por ahora no se implementa.
 
 ### 3.5 JavaScript: `public/assets/js/validation.js`
 
@@ -205,9 +210,55 @@ entrada.css  ──(npm run css:compilar)──►  styles.css  ◄── encabe
 
 ---
 
-## 4. Arquitectura prevista para la lógica (por implementar)
+## 4. Inicio de sesión (implementado)
 
-La estructura de carpetas ya separa las responsabilidades. El flujo esperado cuando se envíe un formulario es:
+```mermaid
+sequenceDiagram
+    participant N as Navegador
+    participant L as login.php
+    participant A as AuthController
+    participant R as UsuarioRepositorio
+    participant DB as MariaDB
+    N->>L: POST correo, contraseña, csrf
+    L->>L: Csrf::validar()
+    L->>A: iniciarSesion(correo, contraseña, ip)
+    A->>R: contarFallidosPorCorreo / PorIp
+    A->>R: buscarPorCorreo
+    R->>DB: consulta preparada
+    A->>A: password_verify (también si el correo no existe)
+    A->>R: registrarIntento
+    A->>A: Sesion::iniciarUsuario (nuevo id de sesión + permisos)
+    A->>DB: Bitacora: inicio_sesion
+    A-->>L: estado
+    L-->>N: redirige al destino del rol o muestra el aviso
+```
+
+| Regla | Detalle |
+|---|---|
+| Mensajes neutros | Correo inexistente y contraseña incorrecta dan el mismo mensaje y tardan lo mismo. "Cuenta desactivada" y "sin habilitar" solo aparecen con la contraseña correcta. |
+| Límite de intentos | 5 fallos por correo o 20 por IP en 15 minutos bloquean temporalmente (`intentos_login`). Un acceso correcto reinicia el contador del correo. |
+| Sesión | Cookie `sesion_hotel` con `HttpOnly` y `SameSite=Lax` (`Secure` con HTTPS), nuevo identificador al entrar y cierre tras 30 minutos de inactividad. |
+| CSRF | Login y logout exigen el token del formulario. El logout solo acepta POST. |
+| Contraseñas | `password_verify`; si el hash usa un costo antiguo se actualiza solo (`password_needs_rehash`). |
+| Permisos | Al entrar se guardan en la sesión los permisos del rol. `Autorizacion::requerirPermiso()` redirige al login sin sesión y responde 403 sin permiso. |
+| Bitácora | `inicio_sesion`, `cierre_sesion`, `acceso_cuenta_inactiva`. |
+| Sin base de datos | El login muestra "El sistema no está disponible" y registra el error en el log de PHP. |
+
+Destino por rol: cliente → `mis_reservaciones.php`; recepcionista → `recepcion/panel.php`;
+administrador → `admin/habitaciones.php`; superadministrador → `admin/usuarios.php`.
+
+Proteger una página nueva:
+
+```php
+<?php
+$rutaBase = '../';                                   // '' si está en public/
+require __DIR__ . '/../../app/config/config.php';
+$usuario = Autorizacion::requerirPermiso('gestionar_pagos', $rutaBase);
+```
+
+### Arquitectura general
+
+El mismo patrón se usará para el resto de la lógica:
 
 ```mermaid
 flowchart TD
@@ -229,10 +280,10 @@ flowchart TD
 | Páginas | `public/*.php` | Reciben la petición, llaman al controlador y muestran la vista. |
 | Controladores | `AuthController`, `UsuarioController`, `ReservacionController` | Validan datos en el servidor y aplican las reglas del negocio. No escriben SQL. |
 | Repositorios | `UsuarioRepositorio`, `ReservacionRepositorio` | Únicos que escriben SQL, siempre con consultas preparadas. |
-| Núcleo | `Conexion` ✅, `Sesion`, `Csrf`, `Autorizacion`, `Bitacora` | Servicios compartidos. |
+| Núcleo | `Conexion`, `Sesion`, `Csrf`, `Autorizacion`, `Bitacora` | Servicios compartidos. Todos implementados. |
 
-**Ya implementado:** `Conexion::obtener()` devuelve una conexión PDO única, con errores como excepciones,
-resultados como arreglos asociativos y consultas preparadas reales. Ninguna página la usa todavía.
+`Conexion::obtener()` devuelve una conexión PDO única, con errores como excepciones, resultados como arreglos
+asociativos y consultas preparadas reales.
 
 ---
 
@@ -305,15 +356,26 @@ Abrir `http://localhost:8000`.
    GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE ON equipo_2.* TO 'usuario_equipo_2'@'localhost';
    ```
 4. Copiar `.env.example` como `.env` y completar los valores.
-5. Abrir `http://localhost/hotel` en el servidor, o `http://IP-DEL-SERVIDOR/hotel` desde otra computadora.
+5. Opcional, para probar: importar `database/datos_prueba.sql`. Crea un usuario por rol
+   (`superadmin@hotel.test`, `admin@hotel.test`, `recepcion@hotel.test`, `cliente@hotel.test`, además de
+   `inactivo@hotel.test` y `sin.verificar@hotel.test`), todos con la contraseña `Hotel#2026`.
+6. Abrir `http://localhost/hotel` en el servidor, o `http://IP-DEL-SERVIDOR/hotel` desde otra computadora.
 
 El CSS compilado está en el repositorio, así que el servidor no necesita Node.js.
+
+### Prueba automática
+
+```bash
+php tests/prueba_auth.php
+```
+
+Comprueba la lógica de acceso (mensajes, límite de intentos, sesión, CSRF) con una base de datos simulada.
+Las consultas SQL reales se prueban iniciando sesión en XAMPP con los usuarios de prueba.
 
 ### Ver los estados del prototipo
 
 | Página | Estados (`?estado=`) |
 |---|---|
-| `login.php` | `credenciales`, `bloqueada`, `sin_verificar`, `conexion`, `exito` |
 | `verificacion_2fa.php` | `codigo_incorrecto`, `exito` |
 | `registro.php` | `conexion`, `exito` |
 | `recuperar_contrasena.php` | `conexion`, `exito` |
@@ -339,19 +401,15 @@ El CSS compilado está en el repositorio, así que el servidor no necesita Node.
 ## 8. Pendientes
 
 **Lógica del servidor**
-- `Sesion`, `Csrf`, `Autorizacion` y `Bitacora` (núcleo).
-- `AuthController`: login con `password_verify`, límite de intentos con `intentos_login`, 2FA para los roles con
-  `requiere_2fa`, recuperación de contraseña con `tokens_usuario`.
-- `UsuarioController`: registro con `password_hash`, verificación de correo.
-- `ReservacionController`: disponibilidad, reservar y cancelar.
-- Repositorios con consultas preparadas.
-- Quitar `data-prototipo-destino` de los formularios y la selección de estado por `?estado=`.
+- Verificación en dos pasos para los roles con `requiere_2fa` (hoy el personal entra solo con contraseña).
+- `UsuarioController`: registro con `password_hash`.
+- Recuperación de contraseña y verificación de correo (requieren envío de correos; fuera de alcance por ahora).
+- "Mantener la sesión iniciada" con `tokens_usuario` (se quitó del login hasta implementarlo).
+- `ReservacionController` y `ReservacionRepositorio`: disponibilidad, reservar y cancelar.
+- Quitar `data-prototipo-destino` y `?estado=` de las pantallas que aún los usan.
 
-**Páginas vacías:** `logout.php`, `mis_reservaciones.php`, `recepcion/*`, `admin/*`.
+**Páginas provisionales o vacías:** contenido real de `mis_reservaciones.php`, `recepcion/*` y `admin/*`.
 
 **Contenido**
-- Datos de prueba en `datos_prueba.sql`, incluido un superadministrador inicial.
 - Fotografías en `public/assets/img/` (nombres esperados en `index.php` y `acceso_inicio.php`).
 - Completar los datos marcados en el aviso de privacidad y los términos, y que los revise una persona especialista.
-- Rutas de `encabezado.php`: solo funcionan para páginas en la raíz de `public/`; ajustarlas al crear
-  `recepcion/` y `admin/`.

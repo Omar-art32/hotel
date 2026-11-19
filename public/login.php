@@ -1,9 +1,20 @@
 <?php
 require __DIR__ . '/../app/config/config.php';
 
-// Prototipo visual: el estado llega por ?estado=... Cuando exista AuthController, él decidirá el estado.
+Sesion::iniciar();
+$usuarioActual = Sesion::usuarioActual();
+if ($usuarioActual !== null) {
+    header('Location: ' . $usuarioActual['destino']);
+    exit;
+}
+
 // Los mensajes nunca indican si el correo está registrado.
 $avisos = [
+    'campos_vacios' => [
+        'tono' => 'alerta',
+        'titulo' => 'Faltan datos para iniciar sesión.',
+        'texto' => 'Escribe tu correo electrónico y tu contraseña.',
+    ],
     'credenciales' => [
         'tono' => 'alerta',
         'titulo' => 'El correo o la contraseña no son correctos.',
@@ -16,21 +27,59 @@ $avisos = [
     ],
     'sin_verificar' => [
         'tono' => 'alerta',
-        'titulo' => 'Falta confirmar tu correo electrónico.',
-        'texto' => 'Abre el enlace que te enviamos al crear tu cuenta. Revisa también la carpeta de correo no deseado.',
+        'titulo' => 'Esta cuenta aún no está habilitada.',
+        'texto' => 'Comunícate con recepción para activarla.',
+    ],
+    'bloqueo_temporal' => [
+        'tono' => 'alerta',
+        'titulo' => 'Demasiados intentos fallidos.',
+        'texto' => 'Por seguridad, espera ' . AuthController::VENTANA_MINUTOS . ' minutos antes de volver a intentarlo.',
+    ],
+    'formulario_caducado' => [
+        'tono' => 'alerta',
+        'titulo' => 'La página caducó.',
+        'texto' => 'Escribe de nuevo tus datos e inicia sesión.',
     ],
     'conexion' => [
         'tono' => 'alerta',
-        'titulo' => 'No hay conexión con el servidor.',
-        'texto' => 'Tus datos no se enviaron. Comprueba tu conexión a internet e inténtalo de nuevo.',
+        'titulo' => 'El sistema no está disponible en este momento.',
+        'texto' => 'Inténtalo de nuevo en unos minutos.',
     ],
-    'exito' => [
+    'sesion_cerrada' => [
         'tono' => 'exito',
-        'titulo' => 'Sesión iniciada.',
-        'texto' => 'Te llevamos a tu cuenta en un momento.',
+        'titulo' => 'Cerraste sesión.',
+        'texto' => 'Vuelve cuando quieras.',
+    ],
+    'acceso_requerido' => [
+        'tono' => 'alerta',
+        'titulo' => 'Inicia sesión para continuar.',
+        'texto' => 'La página que intentaste abrir requiere una cuenta, o tu sesión terminó por inactividad.',
     ],
 ];
-$aviso = $avisos[$_GET['estado'] ?? ''] ?? null;
+
+$estado = '';
+$correo = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $correo = trim((string) ($_POST['correo'] ?? ''));
+    if (!Csrf::validar($_POST['csrf'] ?? null)) {
+        $estado = 'formulario_caducado';
+    } else {
+        try {
+            $estado = (new AuthController())->iniciarSesion($correo, (string) ($_POST['contrasena'] ?? ''), Bitacora::ipCliente());
+        } catch (PDOException $error) {
+            error_log('Login: ' . $error->getMessage());
+            $estado = 'conexion';
+        }
+        if ($estado === 'exito') {
+            header('Location: ' . Sesion::usuarioActual()['destino']);
+            exit;
+        }
+    }
+} elseif (in_array($_GET['estado'] ?? '', ['sesion_cerrada', 'acceso_requerido'], true)) {
+    // Solo los mensajes que llegan por redirección; los errores de acceso nunca vienen por la URL.
+    $estado = $_GET['estado'];
+}
+$aviso = $avisos[$estado] ?? null;
 
 $tituloPagina = 'Iniciar sesión';
 require __DIR__ . '/../app/vistas/encabezado.php';
@@ -46,11 +95,12 @@ require __DIR__ . '/../app/vistas/acceso_inicio.php';
           <div class="mt-10">
             <?php require __DIR__ . '/../app/vistas/aviso.php'; ?>
 
-            <form id="formulario-login" action="login.php" method="post" novalidate
-                  data-validar data-prototipo-destino="login.php?estado=exito">
+            <form id="formulario-login" action="login.php" method="post" novalidate data-validar>
+              <?= Csrf::campo() ?>
               <div>
                 <label for="correo" class="etiqueta-campo">Correo electrónico</label>
                 <input id="correo" name="correo" type="email" required class="campo-texto"
+                       value="<?= htmlspecialchars($correo) ?>"
                        autocomplete="username" autocapitalize="none" spellcheck="false" inputmode="email"
                        aria-describedby="error-correo"
                        data-error-vacio="Escribe tu correo electrónico."
@@ -59,10 +109,7 @@ require __DIR__ . '/../app/vistas/acceso_inicio.php';
               </div>
 
               <div class="mt-6">
-                <div class="mb-2 flex items-baseline justify-between">
-                  <label for="contrasena" class="etiqueta-campo mb-0">Contraseña</label>
-                  <a href="recuperar_contrasena.php" class="enlace text-sm">¿Olvidaste tu contraseña?</a>
-                </div>
+                <label for="contrasena" class="etiqueta-campo">Contraseña</label>
                 <div class="relative">
                   <input id="contrasena" name="contrasena" type="password" required class="campo-texto pr-24"
                          autocomplete="current-password" aria-describedby="error-contrasena"
@@ -74,12 +121,6 @@ require __DIR__ . '/../app/vistas/acceso_inicio.php';
                 </div>
                 <p id="error-contrasena" class="error-campo" hidden></p>
               </div>
-
-              <label class="mt-6 flex cursor-pointer items-center gap-3 text-sm">
-                <input type="checkbox" name="recordar" value="1"
-                       class="size-4 rounded accent-naranja focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tinta">
-                Mantener la sesión iniciada en este dispositivo
-              </label>
 
               <button type="submit" class="boton-principal group mt-8">
                 <svg class="hidden size-4 animate-spin group-aria-busy:block motion-reduce:animate-none" viewBox="0 0 24 24" fill="none" aria-hidden="true">

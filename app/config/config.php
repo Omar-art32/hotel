@@ -16,3 +16,14 @@ define('DB_NOMBRE', $entorno['DB_NOMBRE'] ?? '');
 define('DB_USUARIO', $entorno['DB_USUARIO'] ?? '');
 define('DB_CONTRASENA', $entorno['DB_CONTRASENA'] ?? '');
 unset($rutaEntorno, $entorno);
+
+// Carga automática de clases: Conexion, Sesion, AuthController, UsuarioRepositorio, etc.
+spl_autoload_register(function (string $clase): void {
+    foreach (['nucleo', 'controladores', 'repositorios'] as $carpeta) {
+        $ruta = __DIR__ . "/../$carpeta/$clase.php";
+        if (is_file($ruta)) {
+            require $ruta;
+            return;
+        }
+    }
+});

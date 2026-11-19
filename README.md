@@ -13,10 +13,9 @@ gestiona el hotel.
 | Interfaz: portada, login, verificación 2FA, registro, recuperar y restablecer contraseña, aviso de privacidad, términos | ✅ Prototipo visual |
 | Base de datos: tablas, roles, permisos y validaciones | ✅ `database/esquema.sql` |
 | Conexión a la base de datos | ✅ `app/nucleo/Conexion.php` |
-| Lógica: autenticación, reservaciones, paneles de recepción y administración | ⏳ Pendiente |
-
-Mientras no exista la lógica del servidor, las pantallas simulan sus estados con `?estado=...`
-(por ejemplo, `login.php?estado=credenciales`).
+| Inicio y cierre de sesión: permisos por rol, límite de intentos, bitácora | ✅ Funcional |
+| Registro, 2FA y recuperación de contraseña | 🎨 Solo prototipo visual (sin envío de correos) |
+| Reservaciones y paneles de recepción y administración | ⏳ Pendiente (páginas provisionales) |
 
 ## Roles
 
@@ -24,9 +23,9 @@ Mientras no exista la lógica del servidor, las pantallas simulan sus estados co
 |---|---|
 | Invitado | — |
 | Cliente | No |
-| Recepcionista | Sí |
-| Administrador | Sí |
-| Superadministrador | Sí |
+| Recepcionista | Sí (pendiente) |
+| Administrador | Sí (pendiente) |
+| Superadministrador | Sí (pendiente) |
 
 ## Instalación
 
@@ -45,7 +44,21 @@ Mientras no exista la lógica del servidor, las pantallas simulan sus estados co
    GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE ON equipo_2.* TO 'usuario_equipo_2'@'localhost';
    ```
 5. Copia `.env.example` como `.env` y completa los datos de conexión.
-6. Abre `http://localhost/hotel`.
+6. Para probar, importa también `database/datos_prueba.sql`.
+7. Abre `http://localhost/hotel` e inicia sesión.
+
+### Usuarios de prueba
+
+Contraseña de todos: `Hotel#2026`. Solo para desarrollo.
+
+| Correo | Rol | Entra a |
+|---|---|---|
+| `superadmin@hotel.test` | Superadministrador | `admin/usuarios.php` |
+| `admin@hotel.test` | Administrador | `admin/habitaciones.php` |
+| `recepcion@hotel.test` | Recepcionista | `recepcion/panel.php` |
+| `cliente@hotel.test` | Cliente | `mis_reservaciones.php` |
+| `inactivo@hotel.test` | Cliente desactivado | Muestra "cuenta sin acceso" |
+| `sin.verificar@hotel.test` | Cliente sin habilitar | Muestra "cuenta no habilitada" |
 
 El CSS ya viene compilado, así que el servidor no necesita Node.js.
 
@@ -59,7 +72,9 @@ npm run css:vigilar              # recompila el CSS al guardar cambios
 php -S localhost:8000 -t public  # en otra terminal
 ```
 
-Abre `http://localhost:8000`.
+Abre `http://localhost:8000`. Sin MariaDB, el login muestra "El sistema no está disponible".
+
+Prueba de la lógica de acceso: `php tests/prueba_auth.php`
 
 ## Estructura
 
@@ -90,5 +105,6 @@ Flujo de archivos, relación entre vistas, base de datos, convenciones y pendien
 ## Seguridad
 
 - `.env` contiene credenciales y **no se sube a Git**.
-- Las contraseñas se guardarán con `password_hash` y los tokens solo como hash SHA-256.
+- Contraseñas con `password_hash`/`password_verify`; tokens solo como hash SHA-256.
+- Sesión con cookie `HttpOnly` y `SameSite`, token CSRF en los formularios y bloqueo tras varios intentos fallidos.
 - Todas las consultas deben ser preparadas (`Conexion::obtener()` ya desactiva la emulación).
