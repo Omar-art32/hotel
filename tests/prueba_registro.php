@@ -18,7 +18,7 @@ function datosValidos(array $cambios = []): array
 {
     return array_merge([
         'nombre' => ' Ana ', 'apellidos' => 'Pérez Núñez', 'correo' => ' Ana@Hotel.MX ', 'telefono' => '',
-        'contrasena' => 'frase segura', 'confirmar_contrasena' => 'frase segura', 'terminos' => '1',
+        'contrasena' => 'Frase segura 1!', 'confirmar_contrasena' => 'Frase segura 1!', 'terminos' => '1',
     ], $cambios);
 }
 
@@ -31,7 +31,7 @@ $creado = $repo->buscarPorCorreo('ana@hotel.mx');
 comprobar('devuelve exito', $resultado['estado'] === 'exito');
 comprobar('guarda el correo en minúsculas y sin espacios', $creado !== null);
 comprobar('guarda el nombre sin espacios sobrantes', ($creado['nombre'] ?? '') === 'Ana');
-comprobar('guarda la contraseña cifrada, no en texto', password_verify('frase segura', $creado['contrasena_hash'] ?? '') && ($creado['contrasena_hash'] ?? '') !== 'frase segura');
+comprobar('guarda la contraseña cifrada, no en texto', password_verify('Frase segura 1!', $creado['contrasena_hash'] ?? '') && ($creado['contrasena_hash'] ?? '') !== 'Frase segura 1!');
 comprobar('teléfono vacío se guarda como NULL', array_key_exists('telefono', $creado) && $creado['telefono'] === null);
 comprobar('se crea con rol cliente, activa y habilitada', ($creado['rol'] ?? '') === 'cliente' && $creado['esta_activo'] && $creado['esta_verificado']);
 comprobar('no inicia sesión: la persona entra después por el login', Sesion::usuarioActual() === null);
@@ -41,12 +41,19 @@ echo "Validación en el servidor\n";
 $casos = [
     'nombre vacío' => [['nombre' => '  '], 'nombre'],
     'nombre de más de 60 caracteres' => [['nombre' => str_repeat('á', 61)], 'nombre'],
+    'nombre con números' => [['nombre' => 'Ana2'], 'nombre'],
+    'nombre que empieza con guion' => [['nombre' => '-Ana'], 'nombre'],
     'apellidos vacíos' => [['apellidos' => ''], 'apellidos'],
+    'apellidos con símbolos' => [['apellidos' => 'Pérez <b>'], 'apellidos'],
     'correo vacío' => [['correo' => ''], 'correo'],
     'correo sin formato' => [['correo' => 'ana@'], 'correo'],
     'teléfono con letras' => [['telefono' => '442-ABC-1234'], 'telefono'],
     'contraseña de 7 caracteres' => [['contrasena' => '1234567', 'confirmar_contrasena' => '1234567'], 'contrasena'],
-    'contraseña de más de 72 bytes' => [['contrasena' => str_repeat('a', 73), 'confirmar_contrasena' => str_repeat('a', 73)], 'contrasena'],
+    'contraseña sin mayúscula' => [['contrasena' => 'frase segura 1!', 'confirmar_contrasena' => 'frase segura 1!'], 'contrasena'],
+    'contraseña sin minúscula' => [['contrasena' => 'FRASE SEGURA 1!', 'confirmar_contrasena' => 'FRASE SEGURA 1!'], 'contrasena'],
+    'contraseña sin número' => [['contrasena' => 'Frase segura!', 'confirmar_contrasena' => 'Frase segura!'], 'contrasena'],
+    'contraseña sin signo especial' => [['contrasena' => 'Frase segura 1', 'confirmar_contrasena' => 'Frase segura 1'], 'contrasena'],
+    'contraseña de más de 72 bytes' => [['contrasena' => 'Aa1!' . str_repeat('a', 69), 'confirmar_contrasena' => 'Aa1!' . str_repeat('a', 69)], 'contrasena'],
     'confirmación distinta' => [['confirmar_contrasena' => 'otra frase'], 'confirmar_contrasena'],
     'términos sin aceptar' => [['terminos' => ''], 'terminos'],
 ];
@@ -55,6 +62,8 @@ foreach ($casos as $descripcion => [$cambios, $campo]) {
     $resultado = $controlador->registrar(datosValidos($cambios));
     comprobar("$descripcion -> error en $campo, sin crear cuenta", $resultado['estado'] === 'errores' && isset($resultado['errores'][$campo]) && $repo->buscarPorCorreo('ana@hotel.mx') === null);
 }
+[$controlador] = escenarioRegistro();
+comprobar('nombre y apellidos con acentos, apóstrofo, punto y guion', $controlador->registrar(datosValidos(['nombre' => 'Ma. José', 'apellidos' => "O'Connor Pérez-Núñez"]))['estado'] === 'exito');
 [$controlador] = escenarioRegistro();
 comprobar('teléfono válido con lada y espacios', $controlador->registrar(datosValidos(['telefono' => '+52 (442) 000-0000']))['estado'] === 'exito');
 [$controlador] = escenarioRegistro();

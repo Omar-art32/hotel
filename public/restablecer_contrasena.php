@@ -50,16 +50,16 @@ require __DIR__ . '/../app/vistas/acceso_inicio.php';
               <div>
                 <label for="contrasena" class="etiqueta-campo">Contraseña nueva</label>
                 <div class="relative">
-                  <input id="contrasena" name="contrasena" type="password" required minlength="8" class="campo-texto pr-24"
+                  <input id="contrasena" name="contrasena" type="password" required minlength="8" maxlength="72" pattern="(?=.*\p{Lu})(?=.*\p{Ll})(?=.*\d)(?=.*[^\p{L}\d\s]).{8,}" class="campo-texto pr-24"
                          autocomplete="new-password" aria-describedby="ayuda-contrasena error-contrasena"
                          data-error-vacio="Escribe una contraseña nueva."
-                         data-error-formato="La contraseña necesita al menos 8 caracteres.">
+                         data-error-formato="Usa al menos 8 caracteres con una mayúscula, una minúscula, un número y un signo especial.">
                   <button type="button" data-alternar-contrasena="contrasena" aria-controls="contrasena" aria-pressed="false"
                           class="absolute inset-y-1.5 right-1.5 rounded-lg px-3 text-sm font-medium text-tinta hover:bg-white focus-visible:outline-2 focus-visible:outline-tinta">
                     Mostrar
                   </button>
                 </div>
-                <p id="ayuda-contrasena" class="mt-2 text-sm text-musgo">Mínimo 8 caracteres. Una frase fácil de recordar funciona bien.</p>
+                <p id="ayuda-contrasena" class="mt-2 text-sm text-musgo">Mínimo 8 caracteres, con mayúscula, minúscula, número y signo especial (por ejemplo: ! # $ % &amp;).</p>
                 <p id="error-contrasena" class="error-campo" hidden></p>
               </div>
 

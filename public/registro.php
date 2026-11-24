@@ -86,7 +86,9 @@ require __DIR__ . '/../app/vistas/acceso_inicio.php';
                   <input id="nombre" name="nombre" type="text" required maxlength="60" class="campo-texto"
                          value="<?= $valor('nombre') ?>"<?= $invalido('nombre') ?>
                          autocomplete="given-name" aria-describedby="error-nombre"
-                         data-error-vacio="Escribe tu nombre.">
+                         data-error-vacio="Escribe tu nombre."
+                         pattern="\p{L}[\p{L}\p{M}' .\-]*"
+                         data-error-formato="El nombre solo puede tener letras, espacios, apóstrofo, punto y guion.">
                   <p id="error-nombre" class="error-campo"<?= $mensajeError('nombre') ?></p>
                 </div>
                 <div>
@@ -94,7 +96,9 @@ require __DIR__ . '/../app/vistas/acceso_inicio.php';
                   <input id="apellidos" name="apellidos" type="text" required maxlength="80" class="campo-texto"
                          value="<?= $valor('apellidos') ?>"<?= $invalido('apellidos') ?>
                          autocomplete="family-name" aria-describedby="error-apellidos"
-                         data-error-vacio="Escribe tus apellidos.">
+                         data-error-vacio="Escribe tus apellidos."
+                         pattern="\p{L}[\p{L}\p{M}' .\-]*"
+                         data-error-formato="Los apellidos solo pueden tener letras, espacios, apóstrofo, punto y guion.">
                   <p id="error-apellidos" class="error-campo"<?= $mensajeError('apellidos') ?></p>
                 </div>
               </div>
@@ -114,7 +118,9 @@ require __DIR__ . '/../app/vistas/acceso_inicio.php';
                 <label for="telefono" class="etiqueta-campo">Teléfono <span class="font-normal text-musgo">(opcional)</span></label>
                 <input id="telefono" name="telefono" type="tel" maxlength="20" class="campo-texto" autocomplete="tel" inputmode="tel"
                        value="<?= $valor('telefono') ?>"<?= $invalido('telefono') ?>
-                       aria-describedby="ayuda-telefono error-telefono">
+                       aria-describedby="ayuda-telefono error-telefono"
+                       pattern="[0-9+\(\)\s\-]{7,20}"
+                       data-error-formato="Escribe un teléfono de 7 a 20 caracteres: números, espacios y + ( ) -.">
                 <p id="ayuda-telefono" class="mt-2 text-sm text-musgo">Lo usamos solo para avisos sobre tu reservación.</p>
                 <p id="error-telefono" class="error-campo"<?= $mensajeError('telefono') ?></p>
               </div>
@@ -122,16 +128,16 @@ require __DIR__ . '/../app/vistas/acceso_inicio.php';
               <div class="mt-6">
                 <label for="contrasena" class="etiqueta-campo">Contraseña</label>
                 <div class="relative">
-                  <input id="contrasena" name="contrasena" type="password" required minlength="8" maxlength="72" class="campo-texto pr-24"<?= $invalido('contrasena') ?>
+                  <input id="contrasena" name="contrasena" type="password" required minlength="8" maxlength="72" pattern="(?=.*\p{Lu})(?=.*\p{Ll})(?=.*\d)(?=.*[^\p{L}\d\s]).{8,}" class="campo-texto pr-24"<?= $invalido('contrasena') ?>
                          autocomplete="new-password" aria-describedby="ayuda-contrasena error-contrasena"
                          data-error-vacio="Escribe una contraseña."
-                         data-error-formato="La contraseña necesita al menos 8 caracteres.">
+                         data-error-formato="Usa al menos 8 caracteres con una mayúscula, una minúscula, un número y un signo especial.">
                   <button type="button" data-alternar-contrasena="contrasena" aria-controls="contrasena" aria-pressed="false"
                           class="absolute inset-y-1.5 right-1.5 rounded-lg px-3 text-sm font-medium text-tinta hover:bg-white focus-visible:outline-2 focus-visible:outline-tinta">
                     Mostrar
                   </button>
                 </div>
-                <p id="ayuda-contrasena" class="mt-2 text-sm text-musgo">Mínimo 8 caracteres. Una frase fácil de recordar funciona bien.</p>
+                <p id="ayuda-contrasena" class="mt-2 text-sm text-musgo">Mínimo 8 caracteres, con mayúscula, minúscula, número y signo especial (por ejemplo: ! # $ % &amp;).</p>
                 <p id="error-contrasena" class="error-campo"<?= $mensajeError('contrasena') ?></p>
               </div>
 

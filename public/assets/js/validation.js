@@ -23,7 +23,8 @@ function mostrarError(campo, mensaje) {
 
 function validarFormulario(evento) {
   const formulario = evento.currentTarget;
-  const campos = [...formulario.querySelectorAll('input[required]')];
+  // Los opcionales con pattern (p. ej. teléfono) solo se validan si tienen contenido.
+  const campos = [...formulario.querySelectorAll('input[required], input[pattern]')];
   let primerCampoInvalido = null;
 
   campos.forEach((campo) => {

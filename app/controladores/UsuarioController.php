@@ -6,6 +6,11 @@
  */
 class UsuarioController
 {
+    // Empieza con letra; admite acentos, ñ, espacios y ' . - (O'Connor, Pérez-Núñez, Ma. José).
+    // Mínimo 8 caracteres con mayúscula, minúscula, número y signo especial (lo que no es letra, número ni espacio).
+    private const PATRON_CONTRASENA = '/^(?=.*\\p{Lu})(?=.*\\p{Ll})(?=.*\\d)(?=.*[^\\p{L}\\d\\s]).{8,}$/us';
+    private const PATRON_NOMBRE = "/^\\p{L}[\\p{L}\\p{M}' .-]*$/u";
+
     private UsuarioRepositorio $usuarios;
     private Bitacora $bitacora;
 
@@ -34,11 +39,15 @@ class UsuarioController
             $errores['nombre'] = 'Escribe tu nombre.';
         } elseif (!preg_match('/^.{1,60}$/u', $nombre)) {
             $errores['nombre'] = 'El nombre puede tener como máximo 60 caracteres.';
+        } elseif (!preg_match(self::PATRON_NOMBRE, $nombre)) {
+            $errores['nombre'] = 'El nombre solo puede tener letras, espacios, apóstrofo, punto y guion.';
         }
         if ($apellidos === '') {
             $errores['apellidos'] = 'Escribe tus apellidos.';
         } elseif (!preg_match('/^.{1,80}$/u', $apellidos)) {
             $errores['apellidos'] = 'Los apellidos pueden tener como máximo 80 caracteres.';
+        } elseif (!preg_match(self::PATRON_NOMBRE, $apellidos)) {
+            $errores['apellidos'] = 'Los apellidos solo pueden tener letras, espacios, apóstrofo, punto y guion.';
         }
         if ($correo === '') {
             $errores['correo'] = 'Escribe tu correo electrónico.';
@@ -48,8 +57,8 @@ class UsuarioController
         if ($telefono !== '' && !preg_match('/^[0-9+()\s-]{7,20}$/', $telefono)) {
             $errores['telefono'] = 'Escribe un teléfono de 7 a 20 caracteres: números, espacios y + ( ) -.';
         }
-        if (!preg_match('/^.{8,}$/us', $contrasena)) {
-            $errores['contrasena'] = 'La contraseña necesita al menos 8 caracteres.';
+        if (!preg_match(self::PATRON_CONTRASENA, $contrasena)) {
+            $errores['contrasena'] = 'Usa al menos 8 caracteres con una mayúscula, una minúscula, un número y un signo especial.';
         } elseif (strlen($contrasena) > 72) {
             // bcrypt ignora lo que pase de 72 bytes: se rechaza en lugar de recortarla sin avisar.
             $errores['contrasena'] = 'La contraseña puede tener como máximo 72 caracteres.';
