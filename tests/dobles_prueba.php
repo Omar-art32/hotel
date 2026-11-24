@@ -30,6 +30,22 @@ class RepositorioFalso extends UsuarioRepositorio
         return $this->usuarios[$correo] ?? null;
     }
 
+    public function buscarPorId(int $idUsuario): ?array
+    {
+        foreach ($this->usuarios as $usuario) {
+            if ((int) $usuario['id_usuario'] === $idUsuario) {
+                return $usuario;
+            }
+        }
+        return null;
+    }
+
+    /** Simula que un administrador cambia la cuenta (desactivarla, cambiarle el rol). */
+    public function modificar(string $correo, array $cambios): void
+    {
+        $this->usuarios[$correo] = $cambios + $this->usuarios[$correo];
+    }
+
     public function permisosDeRol(int $idRol): array
     {
         return $idRol === 2 ? ['consultar_reservaciones'] : ['gestionar_usuarios'];
@@ -85,6 +101,12 @@ class BitacoraFalsa extends Bitacora
     public function registrar(string $evento, ?int $idUsuario = null, ?string $detalle = null): void
     {
         $this->eventos[] = $evento;
+    }
+
+    // Todos los eventos de prueba vienen de la misma IP.
+    public function contarPorIp(array $eventos, string $ip, int $minutos): int
+    {
+        return count(array_filter($this->eventos, fn ($evento) => in_array($evento, $eventos, true)));
     }
 }
 

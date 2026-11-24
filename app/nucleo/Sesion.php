@@ -7,6 +7,8 @@
 class Sesion
 {
     private const INACTIVIDAD_SEGUNDOS = 1800;
+    // Aunque haya actividad constante, una sesión robada no sirve para siempre.
+    private const DURACION_MAXIMA_SEGUNDOS = 28800;
 
     public static function iniciar(): void
     {
@@ -27,7 +29,9 @@ class Sesion
 
         $ahora = time();
         $ultimaActividad = $_SESSION['ultima_actividad'] ?? $ahora;
-        if (isset($_SESSION['usuario']) && $ahora - $ultimaActividad > self::INACTIVIDAD_SEGUNDOS) {
+        $inicio = $_SESSION['inicio_sesion'] ?? $ahora;
+        if (isset($_SESSION['usuario'])
+            && ($ahora - $ultimaActividad > self::INACTIVIDAD_SEGUNDOS || $ahora - $inicio > self::DURACION_MAXIMA_SEGUNDOS)) {
             self::cerrar();
             session_start();
         }
@@ -38,6 +42,15 @@ class Sesion
     {
         // Nuevo identificador al autenticarse: evita la fijación de sesión.
         session_regenerate_id(true);
+        // Token CSRF nuevo: el que existía antes de autenticarse no sirve después.
+        unset($_SESSION['csrf']);
+        $_SESSION['inicio_sesion'] = time();
+        $_SESSION['usuario'] = $usuario;
+    }
+
+    /** Refresca los datos del usuario ya autenticado (rol, permisos) sin reiniciar la sesión. */
+    public static function actualizarUsuario(array $usuario): void
+    {
         $_SESSION['usuario'] = $usuario;
     }
 

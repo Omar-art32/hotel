@@ -121,14 +121,14 @@ require __DIR__ . '/../app/vistas/cabecera_sitio.php';
     <ul class="mt-12 grid gap-10 md:grid-cols-3 md:gap-6">
       <?php foreach ($habitaciones as $habitacion): ?>
         <li class="flex flex-col">
-          <div class="aspect-[4/3] rounded-2xl bg-cover bg-center <?= $habitacion['fondo'] ?>"
-               style="background-image: url('assets/img/<?= $habitacion['imagen'] ?>')" role="img"
+          <div class="aspect-[4/3] rounded-2xl bg-cover bg-center <?= htmlspecialchars($habitacion['fondo']) ?>"
+               style="background-image: url('assets/img/<?= htmlspecialchars(rawurlencode($habitacion['imagen'])) ?>')" role="img"
                aria-label="Fotografía de <?= htmlspecialchars($habitacion['nombre']) ?>"></div>
           <h3 class="mt-5 font-titulo text-2xl"><?= htmlspecialchars($habitacion['nombre']) ?></h3>
           <p class="mt-2 text-musgo"><?= htmlspecialchars($habitacion['descripcion']) ?></p>
           <ul class="mt-4 flex flex-wrap gap-2 text-sm">
-            <li class="rounded-lg bg-turquesa/15 px-3 py-1"><?= $habitacion['huespedes'] ?> huéspedes</li>
-            <li class="rounded-lg bg-turquesa/15 px-3 py-1"><?= $habitacion['metros'] ?> m²</li>
+            <li class="rounded-lg bg-turquesa/15 px-3 py-1"><?= (int) $habitacion['huespedes'] ?> huéspedes</li>
+            <li class="rounded-lg bg-turquesa/15 px-3 py-1"><?= (int) $habitacion['metros'] ?> m²</li>
             <li class="rounded-lg bg-turquesa/15 px-3 py-1"><?= htmlspecialchars($habitacion['cama']) ?></li>
           </ul>
           <div class="mt-auto flex items-end justify-between gap-4 pt-6">
@@ -150,8 +150,8 @@ require __DIR__ . '/../app/vistas/cabecera_sitio.php';
       <ul class="grid gap-x-10 gap-y-8 sm:grid-cols-2">
         <?php foreach ($servicios as [$nombreServicio, $detalleServicio]): ?>
           <li class="border-t border-linea pt-5">
-            <h3 class="font-medium"><?= $nombreServicio ?></h3>
-            <p class="mt-1 text-musgo"><?= $detalleServicio ?></p>
+            <h3 class="font-medium"><?= htmlspecialchars($nombreServicio) ?></h3>
+            <p class="mt-1 text-musgo"><?= htmlspecialchars($detalleServicio) ?></p>
           </li>
         <?php endforeach; ?>
       </ul>
@@ -163,7 +163,7 @@ require __DIR__ . '/../app/vistas/cabecera_sitio.php';
     <h2 id="titulo-galeria" class="font-titulo text-4xl sm:text-5xl">Galería</h2>
     <ul class="mt-12 grid auto-rows-[10rem] grid-cols-2 gap-3 sm:auto-rows-[14rem] md:grid-cols-4">
       <?php foreach ($galeria as [$imagen, $descripcion, $clases]): ?>
-        <li class="rounded-2xl bg-cover bg-center <?= $clases ?>" style="background-image: url('assets/img/<?= $imagen ?>')"
+        <li class="rounded-2xl bg-cover bg-center <?= htmlspecialchars($clases) ?>" style="background-image: url('assets/img/<?= htmlspecialchars(rawurlencode($imagen)) ?>')"
             role="img" aria-label="<?= htmlspecialchars($descripcion) ?>"></li>
       <?php endforeach; ?>
     </ul>
@@ -177,10 +177,10 @@ require __DIR__ . '/../app/vistas/cabecera_sitio.php';
         <?php foreach ($opiniones as [$texto, $autor, $contexto]): ?>
           <li>
             <figure class="flex h-full flex-col rounded-2xl bg-white p-7">
-              <blockquote class="font-titulo text-xl font-medium leading-snug tracking-tight">“<?= $texto ?>”</blockquote>
+              <blockquote class="font-titulo text-xl font-medium leading-snug tracking-tight">“<?= htmlspecialchars($texto) ?>”</blockquote>
               <figcaption class="mt-auto pt-6 text-sm">
-                <span class="font-medium"><?= $autor ?></span>
-                <span class="block text-musgo"><?= $contexto ?></span>
+                <span class="font-medium"><?= htmlspecialchars($autor) ?></span>
+                <span class="block text-musgo"><?= htmlspecialchars($contexto) ?></span>
               </figcaption>
             </figure>
           </li>
@@ -196,10 +196,10 @@ require __DIR__ . '/../app/vistas/cabecera_sitio.php';
       <?php foreach ($preguntas as [$pregunta, $respuesta]): ?>
         <details class="group border-b border-linea">
           <summary class="flex cursor-pointer list-none items-center justify-between gap-6 rounded-lg py-5 font-medium focus-visible:outline-2 focus-visible:outline-tinta [&::-webkit-details-marker]:hidden">
-            <?= $pregunta ?>
+            <?= htmlspecialchars($pregunta) ?>
             <svg viewBox="0 0 24 24" class="size-5 shrink-0 text-musgo transition-transform group-open:rotate-45 motion-reduce:transition-none" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
           </summary>
-          <p class="max-w-[60ch] pb-6 text-musgo"><?= $respuesta ?></p>
+          <p class="max-w-[60ch] pb-6 text-musgo"><?= htmlspecialchars($respuesta) ?></p>
         </details>
       <?php endforeach; ?>
     </div>

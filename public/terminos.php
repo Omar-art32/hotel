@@ -6,7 +6,7 @@ Sesion::iniciar(); // La cabecera muestra "Mi cuenta" si hay sesión.
 // Antes de publicar, estos términos debe revisarlos una persona especialista en derecho.
 $tituloDocumento = 'Términos y condiciones';
 $fechaActualizacion = '19 de noviembre de 2026';
-$introduccion = 'Estas condiciones aplican al uso de este sitio, a tu cuenta y a las reservaciones que hagas en ' . htmlspecialchars(NOMBRE_HOTEL) . '. Al crear una cuenta o reservar, aceptas estas condiciones.';
+$introduccion = 'Estas condiciones aplican al uso de este sitio, a tu cuenta y a las reservaciones que hagas en ' . NOMBRE_HOTEL . '. Al crear una cuenta o reservar, aceptas estas condiciones.';
 
 $secciones = [
     [

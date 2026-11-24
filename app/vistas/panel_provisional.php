@@ -12,7 +12,7 @@ $nombresRoles = [
 ?>
 <header class="border-b border-linea bg-ostion">
   <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-8">
-    <a href="<?= $rutaBase ?>index.php" class="flex items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-tinta">
+    <a href="<?= htmlspecialchars($rutaBase) ?>index.php" class="flex items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-tinta">
       <svg viewBox="0 0 24 32" class="h-7 w-5 text-naranja" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5">
         <path d="M1.5 32V12a10.5 10.5 0 0 1 21 0v20" />
         <path d="M6.5 32V12.5a5.5 5.5 0 0 1 11 0V32" />
@@ -25,7 +25,7 @@ $nombresRoles = [
         <span class="block font-medium"><?= htmlspecialchars($usuario['nombre'] . ' ' . $usuario['apellidos']) ?></span>
         <span class="block text-musgo"><?= $nombresRoles[$usuario['rol']] ?? htmlspecialchars($usuario['rol']) ?></span>
       </p>
-      <form action="<?= $rutaBase ?>logout.php" method="post">
+      <form action="<?= htmlspecialchars($rutaBase) ?>logout.php" method="post">
         <?= Csrf::campo() ?>
         <button type="submit" class="inline-flex h-10 items-center rounded-xl border border-linea px-4 text-sm font-medium transition-colors hover:bg-cal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tinta">
           Cerrar sesión

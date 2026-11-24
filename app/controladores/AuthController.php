@@ -71,20 +71,48 @@ class AuthController
         return 'exito';
     }
 
-    /** Guarda en la sesión al usuario (fila de buscarPorCorreo) con sus permisos y su destino. */
     private function abrirSesion(array $usuario): void
     {
-        $idUsuario = (int) $usuario['id_usuario'];
-        Sesion::iniciarUsuario([
-            'id_usuario' => $idUsuario,
+        Sesion::iniciarUsuario($this->datosDeSesion($usuario));
+        $this->bitacora->registrar('inicio_sesion', (int) $usuario['id_usuario']);
+    }
+
+    /**
+     * Relee de la base de datos la cuenta de la sesión. Así, desactivar una cuenta
+     * o cambiarle el rol surte efecto en su siguiente petición, no al volver a entrar.
+     * Devuelve el usuario actualizado, o null (y cierra la sesión) si ya no tiene acceso.
+     */
+    public function revalidarSesion(): ?array
+    {
+        $actual = Sesion::usuarioActual();
+        if ($actual === null) {
+            return null;
+        }
+
+        $usuario = $this->usuarios->buscarPorId((int) $actual['id_usuario']);
+        if ($usuario === null || !$usuario['esta_activo'] || !$usuario['esta_verificado']) {
+            $this->bitacora->registrar('sesion_revocada', $usuario === null ? null : (int) $usuario['id_usuario']);
+            Sesion::cerrar();
+            return null;
+        }
+
+        $datos = $this->datosDeSesion($usuario);
+        Sesion::actualizarUsuario($datos);
+        return $datos;
+    }
+
+    /** Usuario (fila de buscarPorCorreo/buscarPorId) con sus permisos y su destino, como se guarda en la sesión. */
+    private function datosDeSesion(array $usuario): array
+    {
+        return [
+            'id_usuario' => (int) $usuario['id_usuario'],
             'nombre' => $usuario['nombre'],
             'apellidos' => $usuario['apellidos'],
             'correo' => $usuario['correo'],
             'rol' => $usuario['rol'],
             'permisos' => $this->usuarios->permisosDeRol((int) $usuario['id_rol']),
             'destino' => self::DESTINOS[$usuario['rol']] ?? 'index.php',
-        ]);
-        $this->bitacora->registrar('inicio_sesion', $idUsuario);
+        ];
     }
 
     public function cerrarSesion(): void

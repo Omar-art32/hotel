@@ -19,6 +19,11 @@ $avisos = [
         'titulo' => 'Ya existe una cuenta con este correo.',
         'texto' => 'Inicia sesión con él o usa otro correo.',
     ],
+    'bloqueo_temporal' => [
+        'tono' => 'alerta',
+        'titulo' => 'Demasiados intentos de registro.',
+        'texto' => 'Por seguridad, espera ' . UsuarioController::VENTANA_MINUTOS . ' minutos antes de volver a intentarlo.',
+    ],
     'formulario_caducado' => [
         'tono' => 'alerta',
         'titulo' => 'La página caducó.',
@@ -42,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $estado = 'formulario_caducado';
     } else {
         try {
-            ['estado' => $estado, 'errores' => $errores] = (new UsuarioController())->registrar($_POST);
+            ['estado' => $estado, 'errores' => $errores] = (new UsuarioController())->registrar($_POST, Bitacora::ipCliente());
         } catch (PDOException | RuntimeException $error) {
             error_log('Registro: ' . $error->getMessage());
             $estado = 'conexion';

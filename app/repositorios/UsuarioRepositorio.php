@@ -18,15 +18,26 @@ class UsuarioRepositorio
 
     public function buscarPorCorreo(string $correo): ?array
     {
+        return $this->buscarUno('u.correo = ?', $correo);
+    }
+
+    public function buscarPorId(int $idUsuario): ?array
+    {
+        return $this->buscarUno('u.id_usuario = ?', $idUsuario);
+    }
+
+    /** $condicion siempre es texto fijo del código; el valor va como parámetro. */
+    private function buscarUno(string $condicion, string|int $valor): ?array
+    {
         $consulta = $this->pdo()->prepare(
-            'SELECT u.id_usuario, u.id_rol, u.nombre, u.apellidos, u.correo, u.contrasena_hash,
+            "SELECT u.id_usuario, u.id_rol, u.nombre, u.apellidos, u.correo, u.contrasena_hash,
                     u.esta_activo, u.esta_verificado, r.nombre AS rol
              FROM usuarios u
              INNER JOIN roles r ON r.id_rol = u.id_rol
-             WHERE u.correo = ?
-             LIMIT 1'
+             WHERE $condicion
+             LIMIT 1"
         );
-        $consulta->execute([$correo]);
+        $consulta->execute([$valor]);
         return $consulta->fetch() ?: null;
     }
 

@@ -75,7 +75,27 @@ $auth->cerrarSesion();
 comprobar('borra el usuario de la sesión', Sesion::usuarioActual() === null);
 comprobar('registra cierre_sesion', $bitacora->eventos === ['inicio_sesion', 'cierre_sesion']);
 
+echo "Revalidación de la sesión en cada página\n";
+Sesion::iniciar();
+[$auth, $repo] = nuevoEscenario();
+$auth->iniciarSesion('cliente@hotel.mx', 'Correcta#1', '10.0.0.1');
+comprobar('cuenta sin cambios sigue con sesión', ($auth->revalidarSesion()['rol'] ?? '') === 'cliente');
+$repo->modificar('cliente@hotel.mx', ['id_rol' => 5, 'rol' => 'superadministrador']);
+$revalidado = $auth->revalidarSesion();
+comprobar('un cambio de rol actualiza permisos y destino', $revalidado['permisos'] === ['gestionar_usuarios'] && $revalidado['destino'] === 'admin/usuarios.php');
+$repo->modificar('cliente@hotel.mx', ['esta_activo' => 0]);
+comprobar('cuenta desactivada -> pierde la sesión', $auth->revalidarSesion() === null && Sesion::usuarioActual() === null);
+Sesion::iniciar();
+comprobar('sin sesión devuelve null', $auth->revalidarSesion() === null);
+
 echo "CSRF\n";
+Sesion::iniciar();
+$tokenAnterior = Csrf::token();
+[$auth] = nuevoEscenario();
+$_SESSION['csrf'] = $tokenAnterior;
+$auth->iniciarSesion('cliente@hotel.mx', 'Correcta#1', '10.0.0.1');
+comprobar('iniciar sesión cambia el token', Csrf::token() !== $tokenAnterior);
+
 Sesion::iniciar();
 $token = Csrf::token();
 comprobar('acepta el token correcto', Csrf::validar($token));

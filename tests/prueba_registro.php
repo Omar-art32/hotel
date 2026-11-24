@@ -26,7 +26,7 @@ prepararSesionDePrueba();
 
 echo "Registro correcto\n";
 [$controlador, $repo, $bitacora] = escenarioRegistro();
-$resultado = $controlador->registrar(datosValidos());
+$resultado = $controlador->registrar(datosValidos(), '10.0.0.1');
 $creado = $repo->buscarPorCorreo('ana@hotel.mx');
 comprobar('devuelve exito', $resultado['estado'] === 'exito');
 comprobar('guarda el correo en minúsculas y sin espacios', $creado !== null);
@@ -59,24 +59,33 @@ $casos = [
 ];
 foreach ($casos as $descripcion => [$cambios, $campo]) {
     [$controlador, $repo] = escenarioRegistro();
-    $resultado = $controlador->registrar(datosValidos($cambios));
+    $resultado = $controlador->registrar(datosValidos($cambios), '10.0.0.1');
     comprobar("$descripcion -> error en $campo, sin crear cuenta", $resultado['estado'] === 'errores' && isset($resultado['errores'][$campo]) && $repo->buscarPorCorreo('ana@hotel.mx') === null);
 }
 [$controlador] = escenarioRegistro();
-comprobar('nombre y apellidos con acentos, apóstrofo, punto y guion', $controlador->registrar(datosValidos(['nombre' => 'Ma. José', 'apellidos' => "O'Connor Pérez-Núñez"]))['estado'] === 'exito');
+comprobar('nombre y apellidos con acentos, apóstrofo, punto y guion', $controlador->registrar(datosValidos(['nombre' => 'Ma. José', 'apellidos' => "O'Connor Pérez-Núñez"]), '10.0.0.1')['estado'] === 'exito');
 [$controlador] = escenarioRegistro();
-comprobar('teléfono válido con lada y espacios', $controlador->registrar(datosValidos(['telefono' => '+52 (442) 000-0000']))['estado'] === 'exito');
+comprobar('teléfono válido con lada y espacios', $controlador->registrar(datosValidos(['telefono' => '+52 (442) 000-0000']), '10.0.0.1')['estado'] === 'exito');
 [$controlador] = escenarioRegistro();
-comprobar('formulario vacío marca los 6 campos obligatorios', count($controlador->registrar([])['errores']) === 6);
+comprobar('formulario vacío marca los 6 campos obligatorios', count($controlador->registrar([], '10.0.0.1')['errores']) === 6);
 
 echo "Correo ya registrado\n";
 [$controlador, , $bitacora] = escenarioRegistro();
-$resultado = $controlador->registrar(datosValidos(['correo' => 'EXISTENTE@hotel.mx']));
+$resultado = $controlador->registrar(datosValidos(['correo' => 'EXISTENTE@hotel.mx']), '10.0.0.1');
 comprobar('devuelve correo_registrado', $resultado['estado'] === 'correo_registrado' && isset($resultado['errores']['correo']));
 comprobar('no inicia sesión', Sesion::usuarioActual() === null);
-comprobar('no registra nada en la bitácora', $bitacora->eventos === []);
+comprobar('registra el intento para el límite por IP', $bitacora->eventos === ['registro_correo_existente']);
 [$controlador, $repo] = escenarioRegistro();
 $repo->simularCorreoDuplicado = true;
-comprobar('registro simultáneo del mismo correo (error 23000) -> correo_registrado', $controlador->registrar(datosValidos())['estado'] === 'correo_registrado');
+comprobar('registro simultáneo del mismo correo (error 23000) -> correo_registrado', $controlador->registrar(datosValidos(), '10.0.0.1')['estado'] === 'correo_registrado');
+
+echo "Límite de registros por IP\n";
+[$controlador] = escenarioRegistro();
+for ($i = 0; $i < UsuarioController::MAX_REGISTROS_IP; $i++) {
+    $controlador->registrar(datosValidos(['correo' => "persona$i@hotel.mx"]), '10.0.0.1');
+}
+$resultado = $controlador->registrar(datosValidos(['correo' => 'otra@hotel.mx']), '10.0.0.1');
+comprobar('tras el máximo de registros devuelve bloqueo_temporal', $resultado['estado'] === 'bloqueo_temporal');
+comprobar('formulario inválido sigue mostrando errores, no el bloqueo', $controlador->registrar([], '10.0.0.1')['estado'] === 'errores');
 
 terminarPruebas();

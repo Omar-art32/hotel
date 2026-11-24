@@ -11,6 +11,10 @@ class UsuarioController
     private const PATRON_CONTRASENA = '/^(?=.*\\p{Lu})(?=.*\\p{Ll})(?=.*\\d)(?=.*[^\\p{L}\\d\\s]).{8,}$/us';
     private const PATRON_NOMBRE = "/^\\p{L}[\\p{L}\\p{M}' .-]*$/u";
 
+    public const MAX_REGISTROS_IP = 10;
+    public const VENTANA_MINUTOS = 60;
+    private const EVENTOS_REGISTRO = ['registro_usuario', 'registro_correo_existente'];
+
     private UsuarioRepositorio $usuarios;
     private Bitacora $bitacora;
 
@@ -23,9 +27,9 @@ class UsuarioController
     /**
      * @param array $datos Campos del formulario ($_POST).
      * @return array{estado: string, errores: array<string, string>}
-     *         estado: exito, errores o correo_registrado. errores: mensaje por campo.
+     *         estado: exito, errores, correo_registrado o bloqueo_temporal. errores: mensaje por campo.
      */
-    public function registrar(array $datos): array
+    public function registrar(array $datos, string $ip): array
     {
         $nombre = trim((string) ($datos['nombre'] ?? ''));
         $apellidos = trim((string) ($datos['apellidos'] ?? ''));
@@ -75,8 +79,14 @@ class UsuarioController
             return ['estado' => 'errores', 'errores' => $errores];
         }
 
+        // Frena la creación masiva de cuentas y el sondeo de qué correos están registrados.
+        if ($this->bitacora->contarPorIp(self::EVENTOS_REGISTRO, $ip, self::VENTANA_MINUTOS) >= self::MAX_REGISTROS_IP) {
+            return ['estado' => 'bloqueo_temporal', 'errores' => []];
+        }
+
         $correoRegistrado = ['estado' => 'correo_registrado', 'errores' => ['correo' => 'Ya existe una cuenta con este correo.']];
         if ($this->usuarios->buscarPorCorreo($correo) !== null) {
+            $this->bitacora->registrar('registro_correo_existente');
             return $correoRegistrado;
         }
 
@@ -91,6 +101,7 @@ class UsuarioController
         } catch (PDOException $error) {
             // 23000: el correo se registró entre la consulta y el INSERT (índice único).
             if ($error->getCode() === '23000') {
+                $this->bitacora->registrar('registro_correo_existente');
                 return $correoRegistrado;
             }
             throw $error;

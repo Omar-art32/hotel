@@ -12,7 +12,13 @@ class Autorizacion
     public static function requerirPermiso(string $permiso, string $rutaBase = ''): array
     {
         Sesion::iniciar();
-        $usuario = Sesion::usuarioActual();
+        try {
+            $usuario = (new AuthController())->revalidarSesion();
+        } catch (PDOException $error) {
+            error_log('Autorizacion: ' . $error->getMessage());
+            http_response_code(503);
+            exit('El sistema no está disponible en este momento. Inténtalo de nuevo en unos minutos.');
+        }
 
         if ($usuario === null) {
             header('Location: ' . $rutaBase . 'login.php?estado=acceso_requerido');
