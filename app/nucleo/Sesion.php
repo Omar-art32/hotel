@@ -48,7 +48,7 @@ class Sesion
         $inicio = $_SESSION['inicio_sesion'] ?? $ahora;
         if (isset($_SESSION['usuario'])
             && ($ahora - $ultimaActividad > self::INACTIVIDAD_SEGUNDOS || $ahora - $inicio > self::DURACION_MAXIMA_SEGUNDOS
-                || !hash_equals($_SESSION['huella'] ?? '', self::huella()))) {
+                || !hash_equals($_SESSION['huella'] ?? '', self::huella($_SESSION['ligada_ip'] ?? true)))) {
             self::cerrar();
             session_start();
         }
@@ -62,7 +62,10 @@ class Sesion
         // Token CSRF nuevo: el que existía antes de autenticarse no sirve después.
         unset($_SESSION['csrf']);
         $_SESSION['inicio_sesion'] = time();
-        $_SESSION['huella'] = self::huella();
+        // Personal (equipos fijos): sesión ligada a la IP. Clientes: solo al navegador, para no
+        // cerrarles la sesión cada vez que cambian de red (Wi-Fi, datos, VPN).
+        $_SESSION['ligada_ip'] = ($usuario['rol'] ?? '') !== 'cliente';
+        $_SESSION['huella'] = self::huella($_SESSION['ligada_ip']);
         $_SESSION['usuario'] = $usuario;
     }
 
@@ -95,17 +98,24 @@ class Sesion
     }
 
     /**
-     * Huella del navegador: una cookie copiada a otro navegador no conserva la sesión.
-     * No usa la IP para no cerrar sesiones de móviles que cambian de red.
+     * Huella del cliente: una cookie copiada a otro navegador (o, con IP, a otra máquina) no conserva la sesión.
+     * La IP hace falta para distinguir máquinas de un laboratorio, que envían el mismo User-Agent.
+     * REMOTE_ADDR y no X-Forwarded-For, que el cliente puede falsificar.
      */
-    private static function huella(): string
+    private static function huella(bool $conIp): string
     {
-        return hash('sha256', $_SERVER['HTTP_USER_AGENT'] ?? '');
+        $ip = $conIp ? ($_SERVER['REMOTE_ADDR'] ?? '') : '';
+        return hash('sha256', $ip . '|' . ($_SERVER['HTTP_USER_AGENT'] ?? ''));
     }
 
     /** Refresca los datos del usuario ya autenticado (rol, permisos) sin reiniciar la sesión. */
     public static function actualizarUsuario(array $usuario): void
     {
+        // Un cliente al que le dan un rol del personal queda ligado a la IP desde ahora.
+        if (($usuario['rol'] ?? '') !== 'cliente' && empty($_SESSION['ligada_ip'])) {
+            $_SESSION['ligada_ip'] = true;
+            $_SESSION['huella'] = self::huella(true);
+        }
         $_SESSION['usuario'] = $usuario;
     }
 

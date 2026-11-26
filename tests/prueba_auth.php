@@ -99,7 +99,31 @@ session_write_close();
 $_SERVER['HTTP_USER_AGENT'] = 'Navegador-B';
 Sesion::iniciar();
 comprobar('otro navegador pierde la sesión', Sesion::usuarioActual() === null);
-unset($_SERVER['HTTP_USER_AGENT']);
+
+echo "Cookie copiada a otra máquina con el mismo navegador\n";
+$_SERVER['REMOTE_ADDR'] = '10.0.0.1';
+[$auth] = nuevoEscenario();
+$auth->iniciarSesion('super@hotel.mx', 'Correcta#1', '10.0.0.1');
+session_write_close();
+$_SERVER['REMOTE_ADDR'] = '10.0.0.2';
+Sesion::iniciar();
+comprobar('personal: otra IP con el mismo User-Agent pierde la sesión', Sesion::usuarioActual() === null);
+
+echo "Cliente que cambia de red\n";
+$_SERVER['REMOTE_ADDR'] = '10.0.0.1';
+[$auth, $repo] = nuevoEscenario();
+$auth->iniciarSesion('cliente@hotel.mx', 'Correcta#1', '10.0.0.1');
+session_write_close();
+$_SERVER['REMOTE_ADDR'] = '172.16.0.9';
+Sesion::iniciar();
+comprobar('cliente conserva la sesión con otra IP', Sesion::usuarioActual() !== null);
+$repo->modificar('cliente@hotel.mx', ['id_rol' => 5, 'rol' => 'superadministrador']);
+$auth->revalidarSesion();
+session_write_close();
+$_SERVER['REMOTE_ADDR'] = '10.0.0.3';
+Sesion::iniciar();
+comprobar('al ascenderlo a personal queda ligado a la IP', Sesion::usuarioActual() === null);
+unset($_SERVER['HTTP_USER_AGENT'], $_SERVER['REMOTE_ADDR']);
 
 echo "CSRF\n";
 Sesion::iniciar();
