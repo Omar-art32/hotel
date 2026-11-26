@@ -72,9 +72,26 @@ class Sesion
      */
     private static function rutaCookie(): string
     {
-        $script = $_SERVER['SCRIPT_NAME'] ?? '/';
-        $posicion = strpos($script, '/public/');
-        return $posicion === false ? '/' : substr($script, 0, $posicion + 1);
+        // Se toma de la URL que usó el navegador (no de la carpeta en disco, que puede llamarse distinto).
+        // Si no se puede deducir, '/': la cookie funciona aunque no quede aislada.
+        $publica = realpath(__DIR__ . '/../../public');
+        $script = realpath($_SERVER['SCRIPT_FILENAME'] ?? '');
+        $url = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+        if ($publica === false || $script === false || !str_starts_with($script, $publica . DIRECTORY_SEPARATOR)) {
+            return '/';
+        }
+
+        $relativa = str_replace(DIRECTORY_SEPARATOR, '/', substr($script, strlen($publica))); // '/admin/usuarios.php'
+        $finales = ['/public' . $relativa, $relativa];
+        if (str_ends_with($relativa, '/index.php')) {
+            $finales[] = substr($relativa, 0, -strlen('index.php')); // '/hotel/' sirve index.php
+        }
+        foreach ($finales as $final) {
+            if (str_ends_with($url, $final)) {
+                return substr($url, 0, strlen($url) - strlen($final)) . '/';
+            }
+        }
+        return '/';
     }
 
     /**
