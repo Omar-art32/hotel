@@ -17,10 +17,26 @@ class Sesion
         }
 
         ini_set('session.use_strict_mode', '1');
+        // Servidor compartido: las sesiones fuera de la carpeta temporal común a todos los proyectos.
+        $carpetaSesiones = __DIR__ . '/../../storage/sesiones';
+        // La crea Apache con permisos 0700: solo su usuario puede entrar. Si no puede, se usa la carpeta por defecto.
+        if (!is_dir($carpetaSesiones)) {
+            @mkdir($carpetaSesiones, 0700, true);
+        }
+        if (is_dir($carpetaSesiones) && is_writable($carpetaSesiones)) {
+            ini_set('session.save_path', $carpetaSesiones);
+            // Esta carpeta no la limpia el sistema operativo: PHP borra las sesiones vencidas.
+            ini_set('session.gc_probability', '1');
+            ini_set('session.gc_divisor', '100');
+            // Solo en nuestra carpeta: en la compartida borraría sesiones de otros proyectos.
+            ini_set('session.gc_maxlifetime', (string) self::INACTIVIDAD_SEGUNDOS);
+        } else {
+            error_log('Sesion: storage/sesiones no existe o Apache no puede escribir en ella; se usa la carpeta por defecto.');
+        }
         session_name('sesion_hotel');
         session_set_cookie_params([
             'lifetime' => 0,
-            'path' => '/',
+            'path' => self::rutaCookie(),
             'httponly' => true,
             'samesite' => 'Lax',
             'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
@@ -31,7 +47,8 @@ class Sesion
         $ultimaActividad = $_SESSION['ultima_actividad'] ?? $ahora;
         $inicio = $_SESSION['inicio_sesion'] ?? $ahora;
         if (isset($_SESSION['usuario'])
-            && ($ahora - $ultimaActividad > self::INACTIVIDAD_SEGUNDOS || $ahora - $inicio > self::DURACION_MAXIMA_SEGUNDOS)) {
+            && ($ahora - $ultimaActividad > self::INACTIVIDAD_SEGUNDOS || $ahora - $inicio > self::DURACION_MAXIMA_SEGUNDOS
+                || !hash_equals($_SESSION['huella'] ?? '', self::huella()))) {
             self::cerrar();
             session_start();
         }
@@ -45,7 +62,28 @@ class Sesion
         // Token CSRF nuevo: el que existía antes de autenticarse no sirve después.
         unset($_SESSION['csrf']);
         $_SESSION['inicio_sesion'] = time();
+        $_SESSION['huella'] = self::huella();
         $_SESSION['usuario'] = $usuario;
+    }
+
+    /**
+     * Ruta del proyecto en la URL ('/hotel/' en IP/hotel, '/' con php -S): la cookie
+     * no se envía a los proyectos de otros equipos en el mismo servidor.
+     */
+    private static function rutaCookie(): string
+    {
+        $script = $_SERVER['SCRIPT_NAME'] ?? '/';
+        $posicion = strpos($script, '/public/');
+        return $posicion === false ? '/' : substr($script, 0, $posicion + 1);
+    }
+
+    /**
+     * Huella del navegador: una cookie copiada a otro navegador no conserva la sesión.
+     * No usa la IP para no cerrar sesiones de móviles que cambian de red.
+     */
+    private static function huella(): string
+    {
+        return hash('sha256', $_SERVER['HTTP_USER_AGENT'] ?? '');
     }
 
     /** Refresca los datos del usuario ya autenticado (rol, permisos) sin reiniciar la sesión. */

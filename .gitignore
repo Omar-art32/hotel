@@ -4,3 +4,4 @@ storage/respaldos/*
 !storage/respaldos/.gitkeep
 node_modules/
 !storage/logs/.gitkeep
+storage/sesiones/

@@ -11,6 +11,9 @@ class Autorizacion
      */
     public static function requerirPermiso(string $permiso, string $rutaBase = ''): array
     {
+        // Páginas privadas fuera de la caché: "atrás" no debe mostrarlas sin pasar por el servidor.
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+        header('Pragma: no-cache');
         Sesion::iniciar();
         try {
             $usuario = (new AuthController())->revalidarSesion();

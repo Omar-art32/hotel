@@ -88,6 +88,19 @@ comprobar('cuenta desactivada -> pierde la sesión', $auth->revalidarSesion() ==
 Sesion::iniciar();
 comprobar('sin sesión devuelve null', $auth->revalidarSesion() === null);
 
+echo "Cookie copiada a otro navegador\n";
+$_SERVER['HTTP_USER_AGENT'] = 'Navegador-A';
+[$auth] = nuevoEscenario();
+$auth->iniciarSesion('super@hotel.mx', 'Correcta#1', '10.0.0.1');
+session_write_close();
+Sesion::iniciar();
+comprobar('mismo navegador conserva la sesión', Sesion::usuarioActual() !== null);
+session_write_close();
+$_SERVER['HTTP_USER_AGENT'] = 'Navegador-B';
+Sesion::iniciar();
+comprobar('otro navegador pierde la sesión', Sesion::usuarioActual() === null);
+unset($_SERVER['HTTP_USER_AGENT']);
+
 echo "CSRF\n";
 Sesion::iniciar();
 $tokenAnterior = Csrf::token();
